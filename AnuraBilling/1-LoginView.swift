@@ -30,6 +30,7 @@ struct LoginView: View {
         """
     @State private var isBillingListActive = false
     @StateObject private var alertManager = AlertManager()
+    @State private var isLoading = false // 新增 loading 状态
     
     var body: some View {
         NavigationStack {
@@ -68,9 +69,16 @@ struct LoginView: View {
                     .padding(.bottom, 83)
 
                     // 登录按钮
-                    LoginButton(title: "登录") {
+                    LoginButton(isLoading: isLoading) {
                         UIApplication.shared.resignFirstResponder()
-                        login()
+                        isLoading = true
+//                        DispatchQueue.main.asyncAfter(deadline: .now() + 20.0) {
+//                            isBillingListActive = true
+//                            isLoading = false
+//                        }
+                        Task {
+                            await login()
+                        }
                     }
                     
                     // 底部说明文字
@@ -108,19 +116,19 @@ struct LoginView: View {
         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
     
-    func login() {
+    func login() async {
         if (isMultiAccountMode && multiAccountText.isEmpty) ||
         (!isMultiAccountMode && (orgName.isEmpty || email.isEmpty || password.isEmpty)){
             alertManager.showAlert(title: "提示", message: "请填写完整信息")
+            isLoading = false
             return
         }
-        
         var users = [User]()
         if !isMultiAccountMode {
             let user = User(orgName: orgName,
                             email: email,
                             password: password,
-                            deposits: 1.0,
+                            deposits: 999999,
                             unitPrice: 1.0)
             users.append(user)
         } else {
@@ -142,17 +150,17 @@ struct LoginView: View {
                 }
             }
         }
-        
-        // users中所有账号登录
         Task {
             var loginResults = [Result<LoginResponse, Error>]()
             var updatedUsers = [User]()
+            var tag: Int = 0 // Test code
             await withTaskGroup(of: Result<(User, LoginResponse), Error>.self) { group in
                 for user in users {
                     group.addTask {
                         do {
                             let response = try await APIClient.login(email: user.email, password: user.password, org: user.orgName)
-                            let updateUser = User(orgName: user.orgName,
+                            tag += 1
+                            let updateUser = User(orgName: user.orgName + "\(tag)",
                                                   email: user.email,
                                                   password: user.password,
                                                   deposits: user.deposits,
@@ -177,52 +185,17 @@ struct LoginView: View {
             if let fail = failed {
                 if case .failure(let error) = fail {
                     alertManager.showAlert(title: "登录失败", message: error.localizedDescription)
+                    isLoading = false
                     return
                 }
             }
             // 全部成功，主线程赋值
             await MainActor.run {
                 SharedUsers = updatedUsers
-//                isBillingListActive = true
-                
-//                print(SharedUsers)
-                Task {
-                    let res = try await getLicences()
-                    print(res)
-                }
+                isBillingListActive = true
+                isLoading = false
             }
         }
-    }
-    
-    func getLicences() async throws -> [String: [LicenseResponse]] {
-        var licensesDic = [String: [LicenseResponse]]()
-        var errors = [Error]()
-        var tag: Int = 0 // Test code
-        await withTaskGroup(of: Result<(String, [LicenseResponse]), Error>.self) { group in
-            for user in SharedUsers {
-                group.addTask {
-                    do {
-                        let licenses = try await APIClient.getLicences(orgName: user.orgName, limit: 2)
-                        tag += 1
-                        return .success((user.orgName + "\(tag)", licenses))
-                    } catch {
-                        return .failure(error)
-                    }
-                }
-            }
-            for await result in group {
-                switch result {
-                case .success(let (orgName, licenses)):
-                    licensesDic[orgName] = licenses
-                case .failure(let error):
-                    errors.append(error)
-                }
-            }
-        }
-        if !errors.isEmpty {
-            throw errors.first! // 任意失败则抛出第一个错误
-        }
-        return licensesDic // 全部成功才返回
     }
 }
 
@@ -317,18 +290,32 @@ struct InputField: View {
 
 // 登录按钮复用组件
 struct LoginButton: View {
-    var title: String
+    var isLoading: Bool = false
     var action: () -> Void
     var body: some View {
         Button(action: action) {
-            Text(title)
-                .font(.system(size: 13, weight: .medium))
-                .foregroundColor(.white)
-                .frame(width: 140, height: 40)
-                .background(.main)
-                .cornerRadius(10)
+            ZStack(alignment: .center) {
+                Text(isLoading ? "登录中" : "登录")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                if isLoading {
+                    HStack {
+                        Spacer()
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                            .scaleEffect(0.65)
+                            .frame(width: 18, height: 18)
+                            .padding(.trailing, 15)
+                    }
+                }
+            }
+            .frame(width: 140, height: 40)
+            .background(.main)
+            .cornerRadius(10)
         }
         .padding(.horizontal, 80)
+        .disabled(isLoading)
     }
 }
 

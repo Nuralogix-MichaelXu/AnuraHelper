@@ -1,22 +1,14 @@
 import SwiftUI
+import Combine // 修复 ObservableObject 错误
+
+class OrgListModel: ObservableObject {
+    @Published var orgs: [OrgInfo] = []
+}
 
 struct BillingListView: View {
-    // 示例数据
-    let orgs: [OrgInfo] = (1...10).map { i in
-        OrgInfo(
-            name: "Org\(i)",
-            licenseCount: i % 3 + 1,
-            studyCount: i % 4 + 1,
-            successCount: 10000 * i,
-            totalDeposits: 10000 * (11 - i),
-            unitPrice: Double(0.8 + 0.1 * Double(i % 5)),
-            totalCost: 9000 * i,
-            balance: 10000 * (11 - i) - 9000 * i,
-            periodSuccess: 1000 * i,
-            periodCost: Double(800 * i)
-        )
-    }
-    
+    @StateObject private var orgList = OrgListModel()
+    @State private var isRefreshing = false
+    @State private var refreshCompleted = false // 新增状态
     @Environment(\.presentationMode) private var presentationMode
     @State private var startDate: String = "2020.12.25"
     @State private var endDate: String = "至今"
@@ -130,9 +122,9 @@ struct BillingListView: View {
                 
                 // 卡片列表
                 List {
-                    ForEach(Array(orgs.enumerated()), id: \.element.id) { index, org in
+                    ForEach(Array(orgList.orgs.enumerated()), id: \.element.id) { index, org in
                         ZStack(alignment: .top) {
-                            NavigationLink(destination: BillingDetailView(org: org)) {
+                            NavigationLink(destination: BillingDetailView(org: $orgList.orgs[index])) {
                                 EmptyView()
                             }
                             .opacity(0)
@@ -163,7 +155,7 @@ struct BillingListView: View {
                             .padding(20)
                     }
                     Spacer()
-                    RefreshButton()
+                    RefreshButton(isRefreshing: $isRefreshing, refreshCompleted: $refreshCompleted, requestData: requestData)
                 }
                 .background(
                     LinearGradient(
@@ -215,6 +207,136 @@ struct BillingListView: View {
                 )
             }
         }
+        .onAppear {
+            if orgList.orgs.isEmpty && !isRefreshing {
+                isRefreshing = true
+                refreshCompleted = false
+                requestData()
+            }
+        }
+    }
+    
+    func requestData() {
+        Task {
+            do {
+                let licences = try await getLicences()
+                var studies = try await getStudies()
+                try await updateStudies(&studies)
+                var orgs = [OrgInfo]()
+                for user in SharedUsers {
+                    let successCount = totalSuccessMeasurements(for: user, in: studies)
+                    let org = OrgInfo(name: user.orgName,
+                                      successCount: successCount,
+                                      totalDeposits: user.deposits,
+                                      unitPrice: user.unitPrice,
+                                      periodSuccess: successCount,
+                                      licenses: licences[user.orgName] ?? [],
+                                      studies: studies[user.orgName] ?? [])
+                    orgs.append(org)
+                }
+                orgList.orgs = orgs
+                if isRefreshing {
+                    refreshCompleted = true // 通知刷新完成
+                }
+            }catch {
+                print("getData error: \(error)")
+                if isRefreshing {
+                    refreshCompleted = true // 即使失败也通知完成
+                }
+            }
+        }
+    }
+}
+
+extension BillingListView {
+    func updateStudies(_ studyDic: inout [String: [StudyResponse]]) async throws {
+        for (orgName, studies) in studyDic {
+            // 新数组用于收集更新后的 StudyResponse
+            var updatedStudies: [StudyResponse] = studies
+            await withTaskGroup(of: (Int, Int?).self) { group in
+                for (index, study) in studies.enumerated() {
+                    let studyID = study.ID
+                    group.addTask {
+                        do {
+                            let info = try await APIClient.getMeasurementInfo(orgName: orgName, studyID: studyID)
+                            return (index, info.successCount)
+                        } catch {
+                            return (index, nil) // 失败时不更新
+                        }
+                    }
+                }
+                for await (index, successCount) in group {
+                    if let count = successCount {
+                        updatedStudies[index].successMeasurements = count
+                    }
+                }
+            }
+            studyDic[orgName] = updatedStudies
+        }
+    }
+    
+    func getLicences() async throws -> [String: [LicenseResponse]] {
+        var licensesDic = [String: [LicenseResponse]]()
+        var errors = [Error]()
+        await withTaskGroup(of: Result<(String, [LicenseResponse]), Error>.self) { group in
+            for user in SharedUsers {
+                group.addTask {
+                    do {
+                        let licenses = try await APIClient.getLicences(orgName: user.orgName, limit: 3)
+                        return .success((user.orgName, licenses))
+                    } catch {
+                        return .failure(error)
+                    }
+                }
+            }
+            for await result in group {
+                switch result {
+                case .success(let (orgName, licenses)):
+                    licensesDic[orgName] = licenses
+                case .failure(let error):
+                    errors.append(error)
+                }
+            }
+        }
+        if !errors.isEmpty {
+            throw errors.first!
+        }
+        return licensesDic
+    }
+    
+    func getStudies() async throws -> [String: [StudyResponse]] {
+        var studiesDic = [String: [StudyResponse]]()
+        var errors = [Error]()
+        await withTaskGroup(of: Result<(String, [StudyResponse]), Error>.self) { group in
+            for user in SharedUsers {
+                group.addTask {
+                    do {
+                        let studies = try await APIClient.getStudies(orgName: user.orgName, limit: 5)
+                        return .success((user.orgName, studies))
+                    } catch {
+                        return .failure(error)
+                    }
+                }
+            }
+            for await result in group {
+                switch result {
+                case .success(let (orgName, studies)):
+                    studiesDic[orgName] = studies
+                case .failure(let error):
+                    errors.append(error)
+                }
+            }
+        }
+        if !errors.isEmpty {
+            throw errors.first!
+        }
+        return studiesDic
+    }
+    
+    // 通过user的orgName查找studies字典中对应的StudyResponse数组，并计算所有StudyResponse的successMeasurements之和
+    func totalSuccessMeasurements(for user: User, in studies: [String: [StudyResponse]]) -> Int {
+        guard let studyArray = studies[user.orgName] else { return 0 }
+        return studyArray.compactMap { $0.successMeasurements }.reduce(0, +)
     }
 }
 
@@ -252,11 +374,11 @@ struct BillingOrgCard: View {
             .padding(.bottom, bottomMargin)
             
             HStack(spacing: 0) {
-                Text("总充值(元): \(org.totalDeposits)")
+                Text("总充值(元): \(org.totalDepositsString)")
                     .font(.system(size: 11))
                     .foregroundColor(.text)
                 Spacer()
-                Text("单价(元/次): \(String(format: "%.1f", org.unitPrice))")
+                Text("单价(元/次): \(org.unitPriceString)")
                     .font(.system(size: 11))
                     .foregroundColor(.text)
             }
@@ -264,14 +386,14 @@ struct BillingOrgCard: View {
             
             
             HStack(spacing: 0) {
-                Text("总消费(元): \(org.totalCost)")
+                Text("总消费(元): \(org.totalCostString)")
                     .font(.system(size: 11))
                     .foregroundColor(.text)
                 Spacer()
                 Text("余额(元): ")
                     .font(.system(size: 11))
                     .foregroundColor(.text)
-                Text("\(org.balance)")
+                Text("\(org.balanceString)")
                     .font(.system(size: 11))
                     .foregroundColor(org.balance < 0 ? .redText : .greenText)
             }
@@ -282,7 +404,7 @@ struct BillingOrgCard: View {
                     .font(.system(size: 11))
                     .foregroundColor(.lightBlue)
                 Spacer()
-                Text("周期内消费(元): \(String(format: "%.1f", org.periodCost))")
+                Text("周期内消费(元): \(org.periodCostString)")
                     .font(.system(size: 11))
                     .foregroundColor(.lightBlue)
             }
@@ -301,9 +423,20 @@ struct BillingOrgCard: View {
 
 // MARK: - 刷新按钮带三色分段旋转动画
 struct RefreshButton: View {
-    @State private var isRefreshing = false
+    @Binding var isRefreshing: Bool
+    @Binding var refreshCompleted: Bool
+    var requestData: () -> Void
     @State private var rotation: Double = 0
     @State private var timer: Timer? = nil
+    
+    func startRotationAnimation() {
+        timer?.invalidate()
+        timer = Timer.scheduledTimer(withTimeInterval: 1.0/60.0, repeats: true) { _ in
+            rotation += 6
+            if rotation >= 360 { rotation -= 360 }
+        }
+    }
+    
     var body: some View {
         ZStack() {
             // 三色分段圆环
@@ -320,19 +453,11 @@ struct RefreshButton: View {
             .opacity(0.7)
             // 刷新按钮
             Button(action: {
+                if isRefreshing { return }
                 isRefreshing.toggle()
-                if isRefreshing {
-                    // 启动定时器
-                    timer?.invalidate()
-                    timer = Timer.scheduledTimer(withTimeInterval: 1.0/60.0, repeats: true) { _ in
-                        rotation += 6
-                        if rotation >= 360 { rotation -= 360 }
-                    }
-                } else {
-                    // 停止定时器
-                    timer?.invalidate()
-                    timer = nil
-                }
+                refreshCompleted = false // 重置完成状态
+                startRotationAnimation()
+                requestData()
             }) {
                 Text(isRefreshing ? "加载中" : "刷新")
                     .font(.system(size: 8, weight: .medium))
@@ -344,9 +469,29 @@ struct RefreshButton: View {
             }
         }
         .padding(.trailing, 20)
+        .onChange(of: isRefreshing) { refreshing in
+            if refreshing {
+                startRotationAnimation()
+            } else {
+                timer?.invalidate()
+                timer = nil
+            }
+        }
+        .onChange(of: refreshCompleted) { completed in
+            if completed && isRefreshing {
+                timer?.invalidate()
+                timer = nil
+                isRefreshing = false
+            }
+        }
         .onDisappear {
             timer?.invalidate()
             timer = nil
+        }
+        .onAppear {
+            if isRefreshing {
+                startRotationAnimation()
+            }
         }
     }
 }

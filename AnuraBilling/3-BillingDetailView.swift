@@ -8,32 +8,13 @@
 import SwiftUI
 
 struct BillingDetailView: View {
-    let org: OrgInfo
     @Environment(\.presentationMode) private var presentationMode
-    
-    // 示例数据
-    let orgName = "org1"
-    let deposits = "200000"
-    let unitPrice = "0.8"
-    let totalCost = "28272"
-    let balance = "181152"
     let period = "2020.12.25 ~ 2020.12.25"
-    let periodCost = "28272"
-    let licenseList = [
-        ["2026-01-25", "MOBILE", "200/无限使用", "有效", "剩余250天", "1bb1****2136"],
-        ["2026-01-25", "MOBILE", "15/200", "已过期", "已过期20天", "2bb1****2136"]
-    ]
-    let researchList = [
-        ["2026-01-25", "Shanghai Medicine", "有效", "3000", "50", "2400", "5000", "80", "4000", "3bb1****2136"],
-        ["2026-01-25", "雀巢咖啡2", "有效", "1000", "40", "1000", "3000", "80", "3000", "4bb1****2136"],
-        ["2026-01-25", "测试", "已删除", "20", "1", "20", "20", "1", "20", "5bb1****2136"],
-    ]
     
+    @Binding var org: OrgInfo
     @State private var showDepositsAlert = false
-    @State private var depositsValue = ""
     @State private var tempDepositsValue = ""
     @State private var showUnitPriceAlert = false
-    @State private var unitPriceValue = ""
     @State private var tempUnitPriceValue = ""
     
     var body: some View {
@@ -50,7 +31,7 @@ struct BillingDetailView: View {
                                     .foregroundColor(.gray)
                             }
                             Spacer()
-                            Text("\(orgName)")
+                            Text("\(org.name)")
                                 .font(.system(size: 18, weight: .bold))
                                 .foregroundColor(.text)
                             Spacer()
@@ -67,7 +48,7 @@ struct BillingDetailView: View {
                                     Text("总充值(元): ")
                                         .font(.system(size: 12))
                                         .foregroundColor(.text)
-                                    Text(deposits)
+                                    Text(org.totalDepositsString)
                                         .font(.system(size: 12))
                                         .foregroundColor(.text)
                                     Image(systemName: "square.and.pencil")
@@ -77,7 +58,7 @@ struct BillingDetailView: View {
                                         .padding(.leading, 3)
                                         .padding(.top, -3)
                                         .onTapGesture {
-                                            tempDepositsValue = depositsValue
+                                            tempDepositsValue = String(org.totalDeposits)
                                             showDepositsAlert = true
                                         }
                                 }
@@ -86,7 +67,7 @@ struct BillingDetailView: View {
                                     Text("单价(元/次): ")
                                         .font(.system(size: 12))
                                         .foregroundColor(.text)
-                                    Text(unitPrice)
+                                    Text(org.unitPriceString)
                                         .font(.system(size: 12))
                                         .foregroundColor(.text)
                                     Image(systemName: "square.and.pencil")
@@ -96,7 +77,7 @@ struct BillingDetailView: View {
                                         .padding(.leading, 3)
                                         .padding(.top, -3)
                                         .onTapGesture {
-                                            tempUnitPriceValue = unitPriceValue
+                                            tempUnitPriceValue = formatUnitPrice(org.unitPrice)
                                             showUnitPriceAlert = true
                                         }
                                 }
@@ -107,7 +88,7 @@ struct BillingDetailView: View {
                                     Text("总消费(元): ")
                                         .font(.system(size: 12))
                                         .foregroundColor(.text)
-                                    Text(totalCost)
+                                    Text(org.totalCostString)
                                         .font(.system(size: 12))
                                         .foregroundColor(.text)
                                 }
@@ -116,7 +97,7 @@ struct BillingDetailView: View {
                                     Text("余额(元): ")
                                         .font(.system(size: 12))
                                         .foregroundColor(.text)
-                                    Text(balance)
+                                    Text(org.balanceString)
                                         .font(.system(size: 12))
                                         .foregroundColor(.greenText)
                                 }
@@ -130,7 +111,7 @@ struct BillingDetailView: View {
                             Text("统计周期: \(period)")
                                 .font(.system(size: 12))
                                 .foregroundColor(.text)
-                            Text("周期内消费(元): \(periodCost)")
+                            Text("周期内消费(元): \(org.periodCostString)")
                                 .font(.system(size: 12))
                                 .foregroundColor(.text)
                         }
@@ -166,15 +147,15 @@ struct BillingDetailView: View {
                                         .padding(.bottom, 4)
                                         .padding(.horizontal, 20)
                                         .background(Color.white)
-                                        ForEach(licenseList.indices, id: \ .self) { idx in
-                                            let row = licenseList[idx]
+                                        ForEach(org.licenses.indices, id: \ .self) { idx in
+                                            let license = org.licenses[idx]
                                             HStack(spacing: 0) {
-                                                Text(row[0]).frame(width: 70, alignment: .leading)
-                                                Text(row[1]).frame(width: 50, alignment: .leading)
-                                                Text(row[2]).frame(width: 75, alignment: .leading)
-                                                Text(row[3]).frame(width: 50, alignment: .leading)
-                                                Text(row[4]).frame(width: 65, alignment: .leading)
-                                                Text(row[5]).frame(width: 60, alignment: .leading)
+                                                Text(license.createdDateString).frame(width: 70, alignment: .leading)
+                                                Text(license.LicenseType).frame(width: 50, alignment: .leading)
+                                                Text(license.DeviceRegistrationString).frame(width: 75, alignment: .leading)
+                                                Text(license.statusString).frame(width: 50, alignment: .leading)
+                                                Text(license.expirationString).frame(width: 65, alignment: .leading)
+                                                Text(license.encryptedKey).frame(width: 60, alignment: .leading)
                                             }
                                             .font(.system(size: 8))
                                             .foregroundColor(.text)
@@ -182,7 +163,7 @@ struct BillingDetailView: View {
                                             .padding(.leading, 0)
                                             .background(Color.white)
                                             .lineLimit(1)
-                                            if idx != licenseList.count - 1 {
+                                            if idx != org.licenses.count - 1 {
                                                 Divider()
                                                     .background(Color(UIColor.systemGray5))
                                                     .padding(.horizontal, 20)
@@ -224,18 +205,20 @@ struct BillingDetailView: View {
                                         .padding(.bottom, 4)
                                         .padding(.horizontal, 20)
                                         .background(Color.white)
-                                        ForEach(researchList, id: \ .self) { row in
+                                        ForEach(org.studies.indices, id: \ .self) { idx in
+                                            let study = org.studies[idx]
+                                            let cost = org.unitPrice * Double(study.successMeasurements ?? 0)
                                             HStack(spacing: 0) {
-                                                Text(row[0]).frame(width: 70, alignment: .leading)
-                                                Text(row[1]).frame(width: 100, alignment: .leading)
-                                                Text(row[2]).frame(width: 50, alignment: .leading)
-                                                Text(row[3]).frame(width: 70, alignment: .leading)
-                                                Text(row[4]).frame(width: 70, alignment: .leading)
-                                                Text(row[5]).frame(width: 60, alignment: .leading)
-                                                Text(row[6]).frame(width: 60, alignment: .leading)
-                                                Text(row[7]).frame(width: 60, alignment: .leading)
-                                                Text(row[8]).frame(width: 50, alignment: .leading)
-                                                Text(row[9]).frame(width: 60, alignment: .leading)
+                                                Text(study.createdDateString).frame(width: 70, alignment: .leading)
+                                                Text(study.Name).frame(width: 100, alignment: .leading)
+                                                Text(study.statusString).frame(width: 50, alignment: .leading)
+                                                Text("\(study.successMeasurements ?? 0)").frame(width: 70, alignment: .leading)
+                                                Text("\(study.failCount ?? 0)").frame(width: 70, alignment: .leading)
+                                                Text(formatAmount(cost)).frame(width: 60, alignment: .leading)
+                                                Text("\(study.successMeasurements ?? 0)").frame(width: 60, alignment: .leading)
+                                                Text("\(study.failCount ?? 0)").frame(width: 60, alignment: .leading)
+                                                Text(formatAmount(cost)).frame(width: 50, alignment: .leading)
+                                                Text(study.encryptedKey).frame(width: 60, alignment: .leading)
                                             }
                                             .font(.system(size: 8))
                                             .foregroundColor(.text)
@@ -247,15 +230,35 @@ struct BillingDetailView: View {
                                                 .background(Color(UIColor.systemGray5))
                                                 .padding(.horizontal, 20)
                                         }
+                                        
+                                        let totalPeriodSuccessCount = org.studies.reduce(0) {
+                                            $0 + ( $1.successMeasurements ?? 0 )
+                                        }
+                                        let totalPeriodFailCount = org.studies.reduce(0) {
+                                            $0 + ( $1.failCount ?? 0 )
+                                        }
+                                        let totalPeriodCost = org.studies.reduce(0) {
+                                            $0 + org.unitPrice * Double($1.successMeasurements ?? 0)
+                                        }
+                                        let totalSuccessCount = org.studies.reduce(0) {
+                                            $0 + ( $1.successMeasurements ?? 0 )
+                                        }
+                                        let totalFailCount = org.studies.reduce(0) {
+                                            $0 + ( $1.failCount ?? 0 )
+                                        }
+                                        let totalCost = org.studies.reduce(0) {
+                                            $0 + org.unitPrice * Double($1.successMeasurements ?? 0)
+                                        }
+
                                         // 统计行
                                         HStack(spacing: 0) {
-                                            Text("总计(3)").frame(width: 220, alignment: .leading)
-                                            Text("4020").frame(width: 70, alignment: .leading)
-                                            Text("91").frame(width: 70, alignment: .leading)
-                                            Text("3420").frame(width: 60, alignment: .leading)
-                                            Text("8020").frame(width: 60, alignment: .leading)
-                                            Text("161").frame(width: 60, alignment: .leading)
-                                            Text("7020").frame(width: 50, alignment: .leading)
+                                            Text("总计(\(org.studies.count))").frame(width: 220, alignment: .leading)
+                                            Text("\(totalPeriodSuccessCount)").frame(width: 70, alignment: .leading)
+                                            Text("\(totalPeriodFailCount)").frame(width: 70, alignment: .leading)
+                                            Text(formatAmount(totalPeriodCost)).frame(width: 60, alignment: .leading)
+                                            Text("\(totalSuccessCount)").frame(width: 60, alignment: .leading)
+                                            Text("\(totalFailCount)").frame(width: 60, alignment: .leading)
+                                            Text(formatAmount(totalCost)).frame(width: 50, alignment: .leading)
                                             Spacer()
                                         }
                                         .font(.system(size: 8, weight: .medium))
@@ -285,14 +288,16 @@ struct BillingDetailView: View {
                 .padding(.trailing, 20)
                 .padding(.bottom, 20)
             }
-            .background(Color.white)
+          .background(Color.white)
         }
         .navigationBarHidden(true)
         .alert("请输入充值金额", isPresented: $showDepositsAlert, actions: {
             TextField("充值金额", text: $tempDepositsValue)
                 .keyboardType(.decimalPad)
             Button("确定") {
-                depositsValue = tempDepositsValue
+                if let newValue = Double(tempDepositsValue) {
+                    org.totalDeposits = newValue
+                }
             }
             Button("取消", role: .cancel) {}
         })
@@ -300,7 +305,9 @@ struct BillingDetailView: View {
             TextField("单价", text: $tempUnitPriceValue)
                 .keyboardType(.decimalPad)
             Button("确定") {
-                unitPriceValue = tempUnitPriceValue
+                if let newValue = Double(tempUnitPriceValue) {
+                    org.unitPrice = newValue
+                }
             }
             Button("取消", role: .cancel) {}
         })
@@ -309,17 +316,14 @@ struct BillingDetailView: View {
 
 #Preview {
     BillingDetailView(org:
-                        OrgInfo(
-                            name: "",
-                            licenseCount: 0,
-                            studyCount: 0,
-                            successCount: 0,
-                            totalDeposits: 0,
-                            unitPrice: 0,
-                            totalCost: 0,
-                            balance: 0,
-                            periodSuccess: 0,
-                            periodCost: 0
-                        )
+            .constant(OrgInfo(
+                name: "",
+                successCount: 0,
+                totalDeposits: 0,
+                unitPrice: 0,
+                periodSuccess: 0,
+                licenses:[],
+                studies:[]
+            ))
     )
 }

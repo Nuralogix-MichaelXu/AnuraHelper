@@ -24,57 +24,6 @@ struct APIRequest {
     }
 }
 
-// 示例数据结构
-struct OrgInfo: Identifiable {
-    let id = UUID()
-    let name: String
-    let licenseCount: Int
-    let studyCount: Int
-    let successCount: Int
-    let totalDeposits: Int
-    let unitPrice: Double
-    let totalCost: Int
-    let balance: Int
-    let periodSuccess: Int
-    let periodCost: Double
-}
-
-nonisolated struct ErrorResponse: Codable {
-    let Code: String
-    let Message: String
-}
-
-// MARK: - LoginResponse Struct
-struct LoginResponse: Codable {
-    let Token: String
-    let RefreshToken: String
-}
-
-struct LicenseResponse: Codable {
-    let Created: UInt
-    let StatusID: String
-    let Expiration: String
-    let MaxDevices: Int?
-    let Key: String
-    let DeviceRegistrations: Int
-    let LicenseType: String
-    var TotalCount: Int?
-}
-
-struct StudyResponse: Codable {
-    let Created: UInt
-    let ID: String
-    // 新春快乐**** 在这里继续...
-    
-//    let Expiration: String
-//    let MaxDevices: Int?
-//    let Key: String
-//    let DeviceRegistrations: Int
-//    let LicenseType: String
-//    var TotalCount: Int?
-}
-
-
 // MARK: - APIClient Extension (Login)
 extension APIClient {
     static func login(email: String, password: String, org: String) async throws -> LoginResponse {
@@ -107,18 +56,43 @@ extension APIClient {
         return try JSONDecoder().decode([LicenseResponse].self, from: data)
     }
     
-    static func getStudies(orgName: String, limit: Int) async throws -> [LicenseResponse] {
+    static func getStudies(orgName: String, limit: Int) async throws -> [StudyResponse] {
         let urlParameters: [String: Any] = ["Limit": limit]
         
         let data = try await APIClient.shared.sendRequest(
-            urlString: host + "/licenses/organization",
+            urlString: host + "/studies",
             method: .get,
             urlParameters: urlParameters,
             body: nil,
             headers: authHeader(orgName)
         )
-        return try JSONDecoder().decode([LicenseResponse].self, from: data)
+        return try JSONDecoder().decode([StudyResponse].self, from: data)
     }
+    
+    static func getMeasurements(orgName: String, studyID: String, statusID: String) async throws -> [MeasurementResponse] {
+        let urlParameters: [String: Any] = ["Limit": 1,
+                                            "StudyID": studyID,
+                                            "StatusID": statusID]
+        
+        let data = try await APIClient.shared.sendRequest(
+            urlString: host + "/organizations/measurements",
+            method: .get,
+            urlParameters: urlParameters,
+            body: nil,
+            headers: authHeader(orgName)
+        )
+        return try JSONDecoder().decode([MeasurementResponse].self, from: data)
+    }
+    
+    static func getMeasurementInfo(orgName: String, studyID: String) async throws -> MeasurementInfo {
+        let completeMeasurements = try await getMeasurements(orgName: orgName, studyID: studyID, statusID: "COMPLETE")
+        let partialMeasurements = try await getMeasurements(orgName: orgName, studyID: studyID, statusID: "PARTIAL")
+        let completeCount = completeMeasurements.first?.TotalCount ?? 0
+        let partialCount = partialMeasurements.first?.TotalCount ?? 0
+        let successCount = completeCount + partialCount
+        return MeasurementInfo(orgName: orgName, studyID: studyID, successCount: successCount)
+    }
+
     
     static func authHeader(_ orgName: String) async throws -> [String: String] {
         let token = SharedUsers.filter { user in
@@ -179,6 +153,7 @@ class APIClient {
                 completion(.failure(apiError))
                 return
             }
+            print("API->: \(requestURL)")
             completion(.success(data))
         }
         task.resume()
@@ -235,5 +210,17 @@ class APIClient {
                 }
             }
         }
+    }
+}
+
+
+extension TimeInterval {
+    func toDateString() -> String {
+        let date = Date(timeIntervalSince1970: self)
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        formatter.locale = Locale(identifier: "zh_CN") // 设置中文locale，确保格式统一
+        formatter.timeZone = TimeZone(secondsFromGMT: 8) // 可选：设置时区，默认使用系统时区
+        return formatter.string(from: date)
     }
 }
