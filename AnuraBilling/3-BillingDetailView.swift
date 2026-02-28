@@ -9,9 +9,8 @@ import SwiftUI
 
 struct BillingDetailView: View {
     @Environment(\.presentationMode) private var presentationMode
-    let period = "2020.12.25 ~ 2020.12.25"
-    
     @Binding var org: OrgInfo
+    let period: String
     @State private var showDepositsAlert = false
     @State private var tempDepositsValue = ""
     @State private var showUnitPriceAlert = false
@@ -311,6 +310,6 @@ struct BillingDetailView: View {
                 periodSuccess: 0,
                 licenses:[],
                 studies:[]
-            ))
+            )), period: "2026-01-01 ~ 2026-01-31"
     )
 }

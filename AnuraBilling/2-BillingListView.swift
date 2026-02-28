@@ -3,6 +3,8 @@ import Combine // 修复 ObservableObject 错误
 
 class OrgListModel: ObservableObject {
     @Published var orgs: [OrgInfo] = []
+    @Published var billingPeriod = ""
+    @Published var billingName = ""
 }
 
 struct BillingListView: View {
@@ -25,7 +27,7 @@ struct BillingListView: View {
     @StateObject private var alertManager = AlertManager()
     
     init() {
-        self.startDateString = kInitialStartDate.localizedDateString
+        self.startDateString = kInitialStartDate.yyyyMMddDateString
         self.startDate = kInitialStartDate
         self.endDateString = "至今"
         self.endDate = kInitialEndDate
@@ -37,7 +39,7 @@ struct BillingListView: View {
                 // 顶部日期选择和按钮
                 HStack(alignment: .bottom, spacing: 5) {
                     VStack(alignment: .leading, spacing: 8) {
-                        HStack(spacing: 0) {
+                        HStack(spacing: 5) {
                             Image(systemName: "calendar")
                                 .resizable()
                                 .frame(width: 11, height: 11)
@@ -45,8 +47,9 @@ struct BillingListView: View {
                             Text("开始时间")
                                 .font(.system(size: 11))
                                 .foregroundColor(.text)
-                                .padding(.leading, 5)
+                                .frame(width: 60, alignment: .leading)
                         }
+
                         Text(startDateString)
                             .font(.system(size: 11))
                             .frame(width: 80)
@@ -63,7 +66,7 @@ struct BillingListView: View {
                         .foregroundColor(.gray)
                         .padding(.bottom, 3)
                     VStack(alignment: .leading, spacing: 8) {
-                        HStack(spacing: 0) {
+                        HStack(spacing: 5) {
                             Image(systemName: "calendar")
                                 .resizable()
                                 .frame(width: 11, height: 11)
@@ -71,8 +74,9 @@ struct BillingListView: View {
                             Text("截止时间")
                                 .font(.system(size: 11))
                                 .foregroundColor(.text)
-                                .padding(.leading, 5)
+                                .frame(width: 60, alignment: .leading)
                         }
+
                         Text(endDateString)
                             .font(.system(size: 11))
                             .frame(width: 80)
@@ -88,16 +92,16 @@ struct BillingListView: View {
                     Spacer()
                     
                     NavigationLink(destination: BillingPreviewFullView(orgList: orgList).navigationBarHidden(true)) {
-                        Text("账单预览")
-                            .font(.system(size: 8))
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 8)
-                            .background(orgList.orgs.isEmpty ? Color.gray : Color.deepPurple)
-                            .cornerRadius(5)
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                    .disabled(orgList.orgs.isEmpty)
+                            Text("账单预览")
+                                .font(.system(size: 8))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 8)
+                                .background(orgList.orgs.isEmpty ? Color.gray : Color.deepPurple)
+                                .cornerRadius(5)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .disabled(orgList.orgs.isEmpty)
 
                     NavigationLink(destination: BillingSendingView(orgList: orgList).navigationBarHidden(true)) {
                         Text("发送账单")
@@ -141,7 +145,7 @@ struct BillingListView: View {
                 List {
                     ForEach(Array(orgList.orgs.enumerated()), id: \.element.id) { index, org in
                         ZStack(alignment: .top) {
-                            NavigationLink(destination: BillingDetailView(org: $orgList.orgs[index])) {
+                            NavigationLink(destination: BillingDetailView(org: $orgList.orgs[index], period: orgList.billingPeriod)) {
                                 EmptyView()
                             }
                             .opacity(0)
@@ -192,7 +196,7 @@ struct BillingListView: View {
                     HStack {
                         Button("重置") {
                             startDate = kInitialStartDate
-                            startDateString = startDate.localizedDateString
+                            startDateString = startDate.yyyyMMddDateString
                             isStartDatePickerPresented = false
                             withAnimation(.easeInOut(duration: 0.25)) {
                                 isRefreshing = true
@@ -203,7 +207,7 @@ struct BillingListView: View {
                         .padding()
                         Spacer()
                         Button("确定") {
-                            startDateString = startDate.localizedDateString
+                            startDateString = startDate.yyyyMMddDateString
                             isStartDatePickerPresented = false
                             // 日历变更后自动刷新
                             withAnimation(.easeInOut(duration: 0.25)) {
@@ -238,7 +242,7 @@ struct BillingListView: View {
                         .padding()
                         Spacer()
                         Button("确定") {
-                            endDateString = endDate.localizedDateString
+                            endDateString = endDate.yyyyMMddDateString
                             isEndDatePickerPresented = false
                             // 日历变更后自动刷新
                             withAnimation(.easeInOut(duration: 0.25)) {
@@ -323,9 +327,11 @@ struct BillingListView: View {
                                       studies: studiesCopy[user.orgName] ?? [])
                     orgs.append(org)
                 }
-                orgList.orgs = orgs
                 if isRefreshing {
                     refreshCompleted = true // 通知刷新完成
+                    orgList.orgs = orgs
+                    orgList.billingPeriod = "\(startDateString) ~ \(endDateString)"
+                    orgList.billingName = "Nuralogix账单" + Date().yyyyMMddhhmmssDateString
                 }
             }catch {
                 print("getData error: \(error)")

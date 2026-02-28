@@ -156,7 +156,7 @@ class APIClient {
                 completion(.failure(apiError))
                 return
             }
-            print("API->: \(requestURL)")
+//            print("API->: \(requestURL)")
             completion(.success(data))
         }
         task.resume()
@@ -229,6 +229,21 @@ extension TimeInterval {
 }
 
 extension Date {
+    var yyyyMMddDateString: String {
+        return dateFormatter("yyyy.MM.dd").string(from: self)
+    }
+    
+    var yyyyMMddhhmmssDateString: String {
+        return dateFormatter("yyyyMMddhhmmss").string(from: self)
+    }
+        
+    func dateFormatter(_ dateFormat: String) -> DateFormatter {
+        let formatter = DateFormatter()
+        formatter.dateFormat = dateFormat
+        formatter.locale = Locale.current // 跟随系统语言
+        return formatter
+    }
+
     // 自定义格式的 UTC 字符串
     func toUTCString(format: String = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'") -> String {
         let formatter = DateFormatter()
@@ -237,15 +252,5 @@ extension Date {
 //        formatter.locale = Locale(identifier: "en_US_POSIX")
         return formatter.string(from: self)
     }
-        
-    static var dateFormatter: DateFormatter {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy.MM.dd"
-        formatter.locale = Locale.current // 跟随系统语言
-        return formatter
-    }
     
-    var localizedDateString: String {
-        return Date.dateFormatter.string(from: self)
-    }
 }
