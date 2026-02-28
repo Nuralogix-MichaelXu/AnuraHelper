@@ -6,6 +6,9 @@ class OrgListModel: ObservableObject {
 }
 
 struct BillingListView: View {
+    let kInitialStartDate = Calendar.current.date(from: DateComponents(year: 2020, month: 1, day: 1)) ?? Date()
+    let kInitialEndDate = Date()
+    
     @StateObject private var orgList = OrgListModel()
     @State private var isRefreshing = false
     @State private var refreshCompleted = false // 新增状态
@@ -13,29 +16,19 @@ struct BillingListView: View {
     @State private var completedRequests: Double = 0 // 已完成请求数
     @State private var progressTimer: Timer? = nil // 进度动画定时器
     @Environment(\.presentationMode) private var presentationMode
-    @State private var startDate: String = "2020.12.25"
-    @State private var endDate: String = "至今"
+    @State private var startDateString: String
+    @State private var endDateString: String
     @State private var isStartDatePickerPresented = false
     @State private var isEndDatePickerPresented = false
-    @State private var startDateValue: Date = Calendar.current.date(from: DateComponents(year: 2020, month: 12, day: 25)) ?? Date()
-    @State private var endDateValue: Date = Date()
+    @State private var startDate: Date
+    @State private var endDate: Date
     @StateObject private var alertManager = AlertManager()
     
-    var dateFormatter: DateFormatter {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy.MM.dd"
-        formatter.locale = Locale.current // 跟随系统语言
-        return formatter
-    }
-    
-    func formattedDate(_ date: Date) -> String {
-        let today = Calendar.current.startOfDay(for: Date())
-        let selected = Calendar.current.startOfDay(for: date)
-        if selected == today {
-            return "至今"
-        } else {
-            return dateFormatter.string(from: date)
-        }
+    init() {
+        self.startDateString = kInitialStartDate.localizedDateString
+        self.startDate = kInitialStartDate
+        self.endDateString = "至今"
+        self.endDate = kInitialEndDate
     }
     
     var body: some View {
@@ -54,7 +47,7 @@ struct BillingListView: View {
                                 .foregroundColor(.text)
                                 .padding(.leading, 5)
                         }
-                        Text(startDate)
+                        Text(startDateString)
                             .font(.system(size: 11))
                             .frame(width: 80)
                             .foregroundColor(.lightBlue)
@@ -80,7 +73,7 @@ struct BillingListView: View {
                                 .foregroundColor(.text)
                                 .padding(.leading, 5)
                         }
-                        Text(endDate)
+                        Text(endDateString)
                             .font(.system(size: 11))
                             .frame(width: 80)
                             .foregroundColor(.lightBlue)
@@ -192,29 +185,71 @@ struct BillingListView: View {
             .background(Color.white)
             .sheet(isPresented: $isStartDatePickerPresented) {
                 VStack {
-                    DatePicker("选择开始时间", selection: $startDateValue, in: ...Date(), displayedComponents: .date)
+                    DatePicker("选择开始时间", selection: $startDate, in: ...Date(), displayedComponents: .date)
                         .datePickerStyle(.graphical)
                         .labelsHidden()
                         .environment(\.locale, Locale.preferredLanguages.first.map { Locale(identifier: $0) } ?? Locale.current)
-                    Button("确定") {
-                        startDate = dateFormatter.string(from: startDateValue)
-                        isStartDatePickerPresented = false
+                    HStack {
+                        Button("重置") {
+                            startDate = kInitialStartDate
+                            startDateString = startDate.localizedDateString
+                            isStartDatePickerPresented = false
+                            withAnimation(.easeInOut(duration: 0.25)) {
+                                isRefreshing = true
+                            }
+                            refreshCompleted = false
+                            requestData()
+                        }
+                        .padding()
+                        Spacer()
+                        Button("确定") {
+                            startDateString = startDate.localizedDateString
+                            isStartDatePickerPresented = false
+                            // 日历变更后自动刷新
+                            withAnimation(.easeInOut(duration: 0.25)) {
+                                isRefreshing = true
+                            }
+                            refreshCompleted = false
+                            requestData()
+                        }
+                        .padding()
                     }
-                    .padding()
+                    .padding(.horizontal, 50)
                 }
                 .presentationDetents([.medium])
             }
             .sheet(isPresented: $isEndDatePickerPresented) {
                 VStack {
-                    DatePicker("选择截止时间", selection: $endDateValue, in: ...Date(), displayedComponents: .date)
+                    DatePicker("选择截止时间", selection: $endDate, in: ...Date(), displayedComponents: .date)
                         .datePickerStyle(.graphical)
                         .labelsHidden()
                         .environment(\.locale, Locale.preferredLanguages.first.map { Locale(identifier: $0) } ?? Locale.current)
-                    Button("确定") {
-                        endDate = formattedDate(endDateValue)
-                        isEndDatePickerPresented = false
+                    HStack {
+                        Button("重置") {
+                            endDate = Date()
+                            endDateString = "至今"
+                            isEndDatePickerPresented = false
+                            withAnimation(.easeInOut(duration: 0.25)) {
+                                isRefreshing = true
+                            }
+                            refreshCompleted = false
+                            requestData()
+                        }
+                        .padding()
+                        Spacer()
+                        Button("确定") {
+                            endDateString = endDate.localizedDateString
+                            isEndDatePickerPresented = false
+                            // 日历变更后自动刷新
+                            withAnimation(.easeInOut(duration: 0.25)) {
+                                isRefreshing = true
+                            }
+                            refreshCompleted = false
+                            requestData()
+                        }
+                        .padding()
                     }
-                    .padding()
+                    .padding(.horizontal, 50)
                 }
                 .presentationDetents([.medium])
             }
@@ -361,15 +396,19 @@ struct BillingListView: View {
     }
 
     func updateStudies(_ studyDic: inout [String: [StudyResponse]], progress: @escaping () -> Void) async throws {
+        let dateStr = startDate.toUTCString()
+        let endDateStr = endDate.toUTCString()
         for (orgName, studies) in studyDic {
             var updatedStudies: [StudyResponse] = studies
             await withTaskGroup(of: (Int, Int?).self) { group in
                 for (index, study) in studies.enumerated() {
                     group.addTask {
                         do {
-                            let info = try await APIClient.getMeasurementInfo(orgName: orgName, studyID: study.ID, progress: progress)
+                            let info = try await APIClient.getMeasurementInfo(orgName: orgName, studyID: study.ID, date: dateStr, endDate: endDateStr, progress: progress)
+                            progress()
                             return (index, info.successCount)
                         } catch {
+                            progress()
                             return (index, nil)
                         }
                     }

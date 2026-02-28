@@ -69,11 +69,12 @@ extension APIClient {
         return try JSONDecoder().decode([StudyResponse].self, from: data)
     }
     
-    static func getMeasurements(orgName: String, studyID: String, statusID: String) async throws -> [MeasurementResponse] {
-        let urlParameters: [String: Any] = ["Limit": 1,
+    static func getMeasurements(orgName: String, studyID: String, statusID: String, date: String? = nil, endDate: String? = nil) async throws -> [MeasurementResponse] {
+        var urlParameters: [String: Any] = ["Limit": 1,
                                             "StudyID": studyID,
                                             "StatusID": statusID]
-        
+        if let date = date { urlParameters["Date"] = date }
+        if let endDate = endDate { urlParameters["EndDate"] = endDate }
         let data = try await APIClient.shared.sendRequest(
             urlString: host + "/organizations/measurements",
             method: .get,
@@ -84,10 +85,10 @@ extension APIClient {
         return try JSONDecoder().decode([MeasurementResponse].self, from: data)
     }
     
-    static func getMeasurementInfo(orgName: String, studyID: String, progress: @escaping () -> Void) async throws -> MeasurementInfo {
-        let completeMeasurements = try await getMeasurements(orgName: orgName, studyID: studyID, statusID: "COMPLETE")
+    static func getMeasurementInfo(orgName: String, studyID: String, date: String? = nil, endDate: String? = nil, progress: @escaping () -> Void) async throws -> MeasurementInfo {
+        let completeMeasurements = try await getMeasurements(orgName: orgName, studyID: studyID, statusID: "COMPLETE", date: date, endDate: endDate)
         progress()
-        let partialMeasurements = try await getMeasurements(orgName: orgName, studyID: studyID, statusID: "PARTIAL")
+        let partialMeasurements = try await getMeasurements(orgName: orgName, studyID: studyID, statusID: "PARTIAL", date: date, endDate: endDate)
         progress()
         let completeCount = completeMeasurements.first?.TotalCount ?? 0
         let partialCount = partialMeasurements.first?.TotalCount ?? 0
@@ -224,5 +225,27 @@ extension TimeInterval {
         formatter.locale = Locale(identifier: "zh_CN") // 设置中文locale，确保格式统一
         formatter.timeZone = TimeZone(secondsFromGMT: 8) // 可选：设置时区，默认使用系统时区
         return formatter.string(from: date)
+    }
+}
+
+extension Date {
+    // 自定义格式的 UTC 字符串
+    func toUTCString(format: String = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'") -> String {
+        let formatter = DateFormatter()
+        formatter.timeZone = TimeZone(abbreviation: "UTC")
+        formatter.dateFormat = format
+//        formatter.locale = Locale(identifier: "en_US_POSIX")
+        return formatter.string(from: self)
+    }
+        
+    static var dateFormatter: DateFormatter {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy.MM.dd"
+        formatter.locale = Locale.current // 跟随系统语言
+        return formatter
+    }
+    
+    var localizedDateString: String {
+        return Date.dateFormatter.string(from: self)
     }
 }
