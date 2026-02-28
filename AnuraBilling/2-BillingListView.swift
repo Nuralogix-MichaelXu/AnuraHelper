@@ -9,6 +9,9 @@ struct BillingListView: View {
     @StateObject private var orgList = OrgListModel()
     @State private var isRefreshing = false
     @State private var refreshCompleted = false // 新增状态
+    @State private var totalRequests: Double = 0 // 总请求数
+    @State private var completedRequests: Double = 0 // 已完成请求数
+    @State private var progressTimer: Timer? = nil // 进度动画定时器
     @Environment(\.presentationMode) private var presentationMode
     @State private var startDate: String = "2020.12.25"
     @State private var endDate: String = "至今"
@@ -91,27 +94,29 @@ struct BillingListView: View {
                     
                     Spacer()
                     
-                    NavigationLink(destination: BillingPreviewFullView().navigationBarHidden(true)) {
+                    NavigationLink(destination: BillingPreviewFullView(orgList: orgList).navigationBarHidden(true)) {
                         Text("账单预览")
                             .font(.system(size: 8))
                             .foregroundColor(.white)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 8)
-                            .background(.deepPurple)
+                            .background(orgList.orgs.isEmpty ? Color.gray : Color.deepPurple)
                             .cornerRadius(5)
                     }
                     .buttonStyle(PlainButtonStyle())
-                    
-                    NavigationLink(destination: BillingPreviewView().navigationBarHidden(true)) {
+                    .disabled(orgList.orgs.isEmpty)
+
+                    NavigationLink(destination: BillingSendingView(orgList: orgList).navigationBarHidden(true)) {
                         Text("发送账单")
                             .font(.system(size: 8))
                             .foregroundColor(.white)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 8)
-                            .background(.deepPurple)
+                            .background(orgList.orgs.isEmpty ? Color.gray : Color.deepPurple)
                             .cornerRadius(5)
                     }
                     .buttonStyle(PlainButtonStyle())
+                    .disabled(orgList.orgs.isEmpty)
                 }
                 .padding(.top, 25)
                 .padding(.horizontal, 20)
@@ -119,7 +124,26 @@ struct BillingListView: View {
                 
                 Divider()
                     .background(Color(UIColor.systemGray5))
-                
+                // 刷新进度条
+                // 在进度条区域外层加动画和过渡
+                if isRefreshing && totalRequests > 0 {
+                    HStack {
+                        ProgressView(value: min(max(completedRequests, 0), totalRequests), total: totalRequests)
+                            .progressViewStyle(LinearProgressViewStyle(tint: .green))
+                            .frame(height: 8)
+                        Text("\(Int(min(max(completedRequests, 0), totalRequests) / totalRequests * 100))%")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(.green)
+                            .frame(alignment: .trailing)
+                    }
+                    .padding(.trailing, 5)
+                    .onDisappear {
+                        completedRequests = 0
+                        progressTimer?.invalidate()
+                        progressTimer = nil
+                    }
+                }
+
                 // 卡片列表
                 List {
                     ForEach(Array(orgList.orgs.enumerated()), id: \.element.id) { index, org in
@@ -209,7 +233,9 @@ struct BillingListView: View {
         }
         .onAppear {
             if orgList.orgs.isEmpty && !isRefreshing {
-                isRefreshing = true
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    isRefreshing = true
+                }
                 refreshCompleted = false
                 requestData()
             }
@@ -217,21 +243,49 @@ struct BillingListView: View {
     }
     
     func requestData() {
+        totalRequests = 0
+        completedRequests = 0
+        let userCount = SharedUsers.count
+        totalRequests = Double(userCount) * 2 // getLicences + getStudies
+
+        // 启动动画定时器
+        progressTimer?.invalidate()
+        progressTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
+            DispatchQueue.main.async {
+                completedRequests += 0.002 * totalRequests
+                if completedRequests >= totalRequests * 0.9 {
+                    progressTimer?.invalidate()
+                    progressTimer = nil
+                }
+            }
+        }
+
         Task {
             do {
+                let studies = try await getStudies()
+                let studyCount = studies.values.flatMap { $0 }.count
+                let progress = completedRequests / totalRequests
+                totalRequests += Double(studyCount) * 2
+                completedRequests = progress * totalRequests
+                completedRequests = max(Double(userCount), completedRequests)
+                progressTimer?.invalidate()
+                progressTimer = nil
+
                 let licences = try await getLicences()
-                var studies = try await getStudies()
-                try await updateStudies(&studies)
+                completedRequests += Double(userCount)
+                // 统计 updateStudies 需要的请求数
+                var studiesCopy = studies
+                try await updateStudies(&studiesCopy, progress: { completedRequests += 1 })
                 var orgs = [OrgInfo]()
                 for user in SharedUsers {
-                    let successCount = totalSuccessMeasurements(for: user, in: studies)
+                    let successCount = totalSuccessMeasurements(for: user, in: studiesCopy)
                     let org = OrgInfo(name: user.orgName,
                                       successCount: successCount,
                                       totalDeposits: user.deposits,
                                       unitPrice: user.unitPrice,
                                       periodSuccess: successCount,
                                       licenses: licences[user.orgName] ?? [],
-                                      studies: studies[user.orgName] ?? [])
+                                      studies: studiesCopy[user.orgName] ?? [])
                     orgs.append(org)
                 }
                 orgList.orgs = orgs
@@ -246,35 +300,8 @@ struct BillingListView: View {
             }
         }
     }
-}
 
-extension BillingListView {
-    func updateStudies(_ studyDic: inout [String: [StudyResponse]]) async throws {
-        for (orgName, studies) in studyDic {
-            // 新数组用于收集更新后的 StudyResponse
-            var updatedStudies: [StudyResponse] = studies
-            await withTaskGroup(of: (Int, Int?).self) { group in
-                for (index, study) in studies.enumerated() {
-                    let studyID = study.ID
-                    group.addTask {
-                        do {
-                            let info = try await APIClient.getMeasurementInfo(orgName: orgName, studyID: studyID)
-                            return (index, info.successCount)
-                        } catch {
-                            return (index, nil) // 失败时不更新
-                        }
-                    }
-                }
-                for await (index, successCount) in group {
-                    if let count = successCount {
-                        updatedStudies[index].successMeasurements = count
-                    }
-                }
-            }
-            studyDic[orgName] = updatedStudies
-        }
-    }
-    
+    // 修改 getLicences、getStudies、updateStudies 支持进度回调
     func getLicences() async throws -> [String: [LicenseResponse]] {
         var licensesDic = [String: [LicenseResponse]]()
         var errors = [Error]()
@@ -303,7 +330,7 @@ extension BillingListView {
         }
         return licensesDic
     }
-    
+
     func getStudies() async throws -> [String: [StudyResponse]] {
         var studiesDic = [String: [StudyResponse]]()
         var errors = [Error]()
@@ -332,8 +359,33 @@ extension BillingListView {
         }
         return studiesDic
     }
-    
-    // 通过user的orgName查找studies字典中对应的StudyResponse数组，并计算所有StudyResponse的successMeasurements之和
+
+    func updateStudies(_ studyDic: inout [String: [StudyResponse]], progress: @escaping () -> Void) async throws {
+        for (orgName, studies) in studyDic {
+            var updatedStudies: [StudyResponse] = studies
+            await withTaskGroup(of: (Int, Int?).self) { group in
+                for (index, study) in studies.enumerated() {
+                    group.addTask {
+                        do {
+                            let info = try await APIClient.getMeasurementInfo(orgName: orgName, studyID: study.ID, progress: progress)
+                            return (index, info.successCount)
+                        } catch {
+                            return (index, nil)
+                        }
+                    }
+                }
+                for await (index, successCount) in group {
+                    if let count = successCount {
+                        updatedStudies[index].successMeasurements = count
+                    }
+                }
+            }
+            studyDic[orgName] = updatedStudies
+        }
+    }
+}
+
+extension BillingListView {
     func totalSuccessMeasurements(for user: User, in studies: [String: [StudyResponse]]) -> Int {
         guard let studyArray = studies[user.orgName] else { return 0 }
         return studyArray.compactMap { $0.successMeasurements }.reduce(0, +)
@@ -454,7 +506,9 @@ struct RefreshButton: View {
             // 刷新按钮
             Button(action: {
                 if isRefreshing { return }
-                isRefreshing.toggle()
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    isRefreshing.toggle()
+                }
                 refreshCompleted = false // 重置完成状态
                 startRotationAnimation()
                 requestData()
@@ -481,7 +535,9 @@ struct RefreshButton: View {
             if completed && isRefreshing {
                 timer?.invalidate()
                 timer = nil
-                isRefreshing = false
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    isRefreshing = false
+                }
             }
         }
         .onDisappear {

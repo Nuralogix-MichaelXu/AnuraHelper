@@ -99,7 +99,7 @@ struct BillingDetailView: View {
                                         .foregroundColor(.text)
                                     Text(org.balanceString)
                                         .font(.system(size: 12))
-                                        .foregroundColor(.greenText)
+                                        .foregroundColor(org.balance < 0 ? .redText : .greenText)
                                 }
                             }
                         }
@@ -274,19 +274,6 @@ struct BillingDetailView: View {
                         }
                     }
                 }
-                
-                // 右下角刷新按钮
-                Button(action: {}) {
-                    Text("刷新")
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundColor(.white)
-                        .frame(width: 40, height: 40)
-                        .background(.deepPurple)
-                        .clipShape(Circle())
-                        .shadow(color: .gray.opacity(0.6), radius: 5, x: 5, y: 5)
-                }
-                .padding(.trailing, 20)
-                .padding(.bottom, 20)
             }
           .background(Color.white)
         }

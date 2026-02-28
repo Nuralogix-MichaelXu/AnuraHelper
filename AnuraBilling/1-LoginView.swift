@@ -27,6 +27,7 @@ struct LoginView: View {
     @State private var multiAccountText: String = """
         support michaelxu@nuralogix.ai Xq1988050414132024! 200000 0.8
         support michaelxu@nuralogix.ai Xq1988050414132024! 5000 1.2
+        support michaelxu@nuralogix.ai Xq1988050414132024! 5000 1.2
         """
     @State private var isBillingListActive = false
     @StateObject private var alertManager = AlertManager()
@@ -221,6 +222,7 @@ struct LoginInputArea: View {
                             .padding(.vertical, 15)
                             .frame(minWidth: 600, maxWidth: .infinity)
                     }
+                    .padding(.trailing, 5)
                     .overlay(
                         RoundedRectangle(cornerRadius: 8)
                             .stroke(.gray, lineWidth: 1 / UIScreen.main.scale)

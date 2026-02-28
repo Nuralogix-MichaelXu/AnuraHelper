@@ -48,6 +48,10 @@ struct OrgInfo: Identifiable {
     var unitPriceString: String {
         return formatUnitPrice(unitPrice)
     }
+    
+    var leftSuccessCount: Int {
+        return max(Int(balance / unitPrice), 0)
+    }
 }
 
 struct MeasurementInfo: Codable {
@@ -182,7 +186,7 @@ func formatAmount(_ value: Double) -> String {
     formatter.minimumFractionDigits = 0
     formatter.maximumFractionDigits = 2
     formatter.roundingMode = .halfUp
-    formatter.groupingSeparator = ""
+    formatter.groupingSeparator = ","
     return formatter.string(from: NSNumber(value: value)) ?? "\(value)"
 }
 
@@ -192,7 +196,7 @@ func formatUnitPrice(_ value: Double) -> String {
     formatter.minimumFractionDigits = 1
     formatter.maximumFractionDigits = 2
     formatter.roundingMode = .halfUp
-    formatter.groupingSeparator = ""
+    formatter.groupingSeparator = ","
     return formatter.string(from: NSNumber(value: value)) ?? "\(value)"
 }
 

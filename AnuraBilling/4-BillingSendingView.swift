@@ -1,5 +1,5 @@
 //
-//  BillingPreviewView.swift
+//  BillingSendingView.swift
 //  AnuraBilling
 //
 //  Created by Michael Xu on 2026/2/11.
@@ -7,17 +7,13 @@
 
 import SwiftUI
 
-struct BillingPreviewView: View {
+struct BillingSendingView: View {
     @Environment(\.presentationMode) var presentationMode
+    let orgList: OrgListModel
     @State private var email: String = ""
-    @State private var content: String = "· 组织数：3\n· 余额不足的组织数：1\n· 累计测量成功次数：65048\n· 累计充值：130000元\n· 累计消费：74535.4元\n· 周期内测量成功次数：25002\n· 周期内消费：36420元\n· 详情请查看附件！"
+    @State private var content: String = ""
     let billName = "Nuralogix账单20260127085730"
     let billPeriod = "2020.12.25 ~ 2026.01.27"
-    let orgs: [OrgRow] = [
-        OrgRow(name: "org1", deposits: "100000", periodConsume: "40000", consume: "60000", balance: "40000", price: "1.2", periodSuccess: "30000", success: "50000"),
-        OrgRow(name: "org2", deposits: "20000", periodConsume: "2000.5", consume: "2598.4", balance: "17401.6", price: "0.8", periodSuccess: "2000", success: "3248"),
-        OrgRow(name: "org3", deposits: "10000", periodConsume: "6990", consume: "12356", balance: "-2356", price: "1.0", periodSuccess: "8940", success: "12356")
-    ]
     @State private var showFullPreview = false
     var body: some View {
         NavigationStack{
@@ -81,7 +77,7 @@ struct BillingPreviewView: View {
                                     Text("组织名称")
                                         .font(.system(size: 8, weight: .medium))
                                         .foregroundColor(.text)
-                                        .frame(width: 42, alignment: .leading)
+                                        .frame(width: 50, alignment: .leading)
                                     Text("已充值(元)")
                                         .font(.system(size: 8, weight: .medium))
                                         .foregroundColor(.text)
@@ -110,57 +106,75 @@ struct BillingPreviewView: View {
                                         .font(.system(size: 8, weight: .medium))
                                         .foregroundColor(.text)
                                         .frame(width: 60, alignment: .leading)
+                                    Text("剩余测量成功(次)")
+                                        .font(.system(size: 8, weight: .medium))
+                                        .foregroundColor(.text)
+                                        .frame(width: 70, alignment: .leading)
                                 }
                                 .padding(.vertical, 8)
                                 // 表格内容
-                                VStack(spacing: 0) {
-                                    ForEach(orgs.indices, id: \ .self) { idx in
-                                        HStack {
-                                            Text(orgs[idx].name)
-                                                .font(.system(size: 8))
-                                                .foregroundColor(.text)
-                                                .frame(width: 42, alignment: .leading)
-                                            Text(orgs[idx].deposits)
+                                VStack(alignment: .leading, spacing: 0) {
+                                    ForEach(orgList.orgs.indices, id: \ .self) { idx in
+                                        HStack(alignment: .top) {
+                                            Text(orgList.orgs[idx].name)
                                                 .font(.system(size: 8))
                                                 .foregroundColor(.text)
                                                 .frame(width: 50, alignment: .leading)
-                                            Text(orgs[idx].periodConsume)
+                                            Text(orgList.orgs[idx].totalDepositsString)
+                                                .font(.system(size: 8))
+                                                .foregroundColor(.text)
+                                                .frame(width: 50, alignment: .leading)
+                                            Text(orgList.orgs[idx].periodCostString)
                                                 .font(.system(size: 8))
                                                 .foregroundColor(.text)
                                                 .frame(width: 60, alignment: .leading)
-                                            Text(orgs[idx].consume)
+                                            Text(orgList.orgs[idx].totalCostString)
                                                 .font(.system(size: 8))
                                                 .foregroundColor(.text)
                                                 .frame(width: 50, alignment: .leading)
-                                            Text(orgs[idx].balance)
+                                            Text(orgList.orgs[idx].balanceString)
                                                 .font(.system(size: 8))
-                                                .foregroundColor(balanceColor(orgs[idx].balance))
+                                                .foregroundColor(balanceColor(orgList.orgs[idx].balanceString))
                                                 .frame(width: 45, alignment: .leading)
-                                            Text(orgs[idx].price)
+                                            Text(orgList.orgs[idx].unitPriceString)
                                                 .font(.system(size: 8))
                                                 .foregroundColor(.text)
                                                 .frame(width: 45, alignment: .leading)
-                                            Text(orgs[idx].periodSuccess)
+                                            Text("\(orgList.orgs[idx].periodSuccess)")
                                                 .font(.system(size: 8))
                                                 .foregroundColor(.text)
                                                 .frame(width: 80, alignment: .leading)
-                                            Text(orgs[idx].success)
+                                            Text("\(orgList.orgs[idx].successCount)")
                                                 .font(.system(size: 8))
                                                 .foregroundColor(.text)
                                                 .frame(width: 60, alignment: .leading)
+                                            Text("\(orgList.orgs[idx].leftSuccessCount)")
+                                                .font(.system(size: 8))
+                                                .foregroundColor(.text)
+                                                .frame(width: 70, alignment: .leading)
                                         }
                                         .padding(.vertical, 8)
-                                        if idx != orgs.count - 1 {
+                                        if idx != orgList.orgs.count - 1 {
                                             Divider()
                                                 .background(Color(UIColor.systemGray5))
                                         }
                                     }
+                                    if orgList.orgs.count > 3 {
+                                        HStack {
+                                            Text("...")
+                                                .font(.system(size: 8))
+                                                .foregroundColor(.text)
+                                                .frame(width: 50, alignment: .leading)
+                                        }
+                                    }
+                                    Spacer()
                                 }
+                                .frame(height: 100)
                             }
                         }
                     }
                     .padding(.horizontal, 10)
-                    .padding(.vertical, 20)
+                    .padding(.top, 20)
                     .background(Color(UIColor.systemGray6))
                     .cornerRadius(5)
                     
@@ -171,7 +185,7 @@ struct BillingPreviewView: View {
                         .padding(.top, -5)
                     
                     
-                    NavigationLink(destination: BillingPreviewFullView().navigationBarHidden(true)) {
+                    NavigationLink(destination: BillingPreviewFullView(orgList: orgList).navigationBarHidden(true)) {
                         Image(systemName: "widget.medium.badge.plus")
                             .font(.system(size: 15, weight: .regular))
                             .foregroundColor(.main)
@@ -213,7 +227,7 @@ struct BillingPreviewView: View {
                                 .stroke(.gray, lineWidth: 1 / UIScreen.main.scale)
                         )
                     }
-                    
+                                        
                     HStack(alignment: .top, spacing: 10) {
                         Text("邮件内容")
                             .font(.system(size: 14))
@@ -251,6 +265,26 @@ struct BillingPreviewView: View {
             }
             .background(Color.white)
             .navigationBarHidden(true)
+            .onAppear {
+                let orgs = orgList.orgs
+                let insufficientOrgsCount = orgs.filter { $0.balance < 0 }.count
+                let accumulatedSuccess = orgs.reduce(0) { $0 + $1.successCount }
+                let accumulatedDeposits = formatAmount(orgs.reduce(0) { $0 + $1.totalDeposits })
+                let accumulatedCost = formatAmount(orgs.reduce(0) { $0 + $1.totalCost })
+                let accumulatedPeriodSuccess = orgs.reduce(0) { $0 + $1.periodSuccess }
+                let accumulatedPeriodCost = formatAmount(orgs.reduce(0) { $0 + $1.periodCost })
+
+                content = """
+                    · 组织数：\(orgs.count)个
+                    · 余额不足的组织数：\(insufficientOrgsCount)个
+                    · 累计测量成功次数：\(accumulatedSuccess)次
+                    · 累计充值：\(accumulatedDeposits)元
+                    · 累计消费：\(accumulatedCost)元
+                    · 周期内测量成功次数：\(accumulatedPeriodSuccess)元
+                    · 周期内消费：\(accumulatedPeriodCost)元
+                    · 详情请查看附件！
+                    """
+            }
         }
     }
     func balanceColor(_ balance: String) -> Color {
@@ -275,5 +309,5 @@ struct OrgRow: Identifiable {
 }
 
 #Preview {
-    BillingPreviewView()
+    BillingSendingView(orgList: OrgListModel())
 }

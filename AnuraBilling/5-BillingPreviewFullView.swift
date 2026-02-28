@@ -12,19 +12,8 @@ struct BillingPreviewFullView: View {
 
     let billName = "Nuralogix账单20260127085730"
     let billPeriod = "2020.12.25 ~ 2026.01.27"
-    let orgs: [OrgRow] = [
-        OrgRow(name: "org1", deposits: "100000", periodConsume: "40000", consume: "60000", balance: "40000", price: "1.2", periodSuccess: "30000", success: "50000"),
-        OrgRow(name: "org2", deposits: "20000", periodConsume: "2000.5", consume: "2598.4", balance: "17401.6", price: "0.8", periodSuccess: "2000", success: "3248"),
-        OrgRow(name: "org3", deposits: "10000", periodConsume: "6990", consume: "12356", balance: "-2356", price: "1.0", periodSuccess: "8940", success: "12356"),
-        OrgRow(name: "org3", deposits: "10000", periodConsume: "6990", consume: "12356", balance: "-2356", price: "1.0", periodSuccess: "8940", success: "12356"),
-        OrgRow(name: "org3", deposits: "10000", periodConsume: "6990", consume: "12356", balance: "-2356", price: "1.0", periodSuccess: "8940", success: "12356"),
-        OrgRow(name: "org3", deposits: "10000", periodConsume: "6990", consume: "12356", balance: "-2356", price: "1.0", periodSuccess: "8940", success: "12356"),
-        OrgRow(name: "org3", deposits: "10000", periodConsume: "6990", consume: "12356", balance: "-2356", price: "1.0", periodSuccess: "8940", success: "12356"),
-        OrgRow(name: "org3", deposits: "10000", periodConsume: "6990", consume: "12356", balance: "-2356", price: "1.0", periodSuccess: "8940", success: "12356"),
-        OrgRow(name: "org3", deposits: "10000", periodConsume: "6990", consume: "12356", balance: "-2356", price: "1.0", periodSuccess: "8940", success: "12356"),
-        OrgRow(name: "org3", deposits: "10000", periodConsume: "6990", consume: "12356", balance: "-2356", price: "1.0", periodSuccess: "8940", success: "12356")
+    let orgList: OrgListModel
 
-    ]
     var body: some View {
         GeometryReader { geo in
             Color(UIColor.systemGray6).ignoresSafeArea()
@@ -52,23 +41,23 @@ struct BillingPreviewFullView: View {
                         .foregroundColor(.text)
                 }
                 
-                let scale: CGFloat = 1.5
+                let scale: CGFloat = 1.4
 
                 VStack(alignment: .leading, spacing: 0) {
                     // 表头
-                    HStack {
+                    HStack(alignment: .bottom) {
                         Text("组织名称")
                             .font(.system(size: 8*scale, weight: .medium))
                             .foregroundColor(.text)
-                            .frame(width: 42*scale, alignment: .leading)
+                            .frame(width: 50*scale, alignment: .leading)
                         Text("已充值(元)")
                             .font(.system(size: 8*scale, weight: .medium))
                             .foregroundColor(.text)
                             .frame(width: 50*scale, alignment: .leading)
-                        Text("周期内消费(元)")
+                        Text("周期内\n消费(元)")
                             .font(.system(size: 8*scale, weight: .medium))
                             .foregroundColor(.text)
-                            .frame(width: 60*scale, alignment: .leading)
+                            .frame(width: 40*scale, alignment: .leading)
                         Text("总消费(元)")
                             .font(.system(size: 8*scale, weight: .medium))
                             .foregroundColor(.text)
@@ -81,14 +70,18 @@ struct BillingPreviewFullView: View {
                             .font(.system(size: 8*scale, weight: .medium))
                             .foregroundColor(.text)
                             .frame(width: 45*scale, alignment: .leading)
-                        Text("周期内测量成功(次)")
+                        Text("周期内\n测量成功(次)")
                             .font(.system(size: 8*scale, weight: .medium))
                             .foregroundColor(.text)
-                            .frame(width: 80*scale, alignment: .leading)
+                            .frame(width: 60*scale, alignment: .leading)
                         Text("总测量成功(次)")
                             .font(.system(size: 8*scale, weight: .medium))
                             .foregroundColor(.text)
                             .frame(width: 60*scale, alignment: .leading)
+                        Text("剩余测量成功(次)")
+                            .font(.system(size: 8*scale, weight: .medium))
+                            .foregroundColor(.text)
+                            .frame(width: 70*scale, alignment: .leading)
                         
                         Spacer()
                     }
@@ -96,49 +89,52 @@ struct BillingPreviewFullView: View {
 
                 // 横向滚动表格
                 ScrollView(.vertical, showsIndicators: false) {
-                        
                         // 表格内容
                         VStack(alignment: .leading, spacing: 0) {
-                            ForEach(orgs.indices, id: \ .self) { idx in
+                            ForEach(orgList.orgs.indices, id: \ .self) { idx in
                                 HStack {
-                                    Text(orgs[idx].name)
-                                        .font(.system(size: 8*scale))
-                                        .foregroundColor(.text)
-                                        .frame(width: 42*scale, alignment: .leading)
-                                    Text(orgs[idx].deposits)
+                                    Text(orgList.orgs[idx].name)
                                         .font(.system(size: 8*scale))
                                         .foregroundColor(.text)
                                         .frame(width: 50*scale, alignment: .leading)
-                                    Text(orgs[idx].periodConsume)
-                                        .font(.system(size: 8*scale))
-                                        .foregroundColor(.text)
-                                        .frame(width: 60*scale, alignment: .leading)
-                                    Text(orgs[idx].consume)
+                                    Text(orgList.orgs[idx].totalDepositsString)
                                         .font(.system(size: 8*scale))
                                         .foregroundColor(.text)
                                         .frame(width: 50*scale, alignment: .leading)
-                                    Text(orgs[idx].balance)
+                                    Text(orgList.orgs[idx].periodCostString)
                                         .font(.system(size: 8*scale))
-                                        .foregroundColor(balanceColor(orgs[idx].balance))
+                                        .foregroundColor(.text)
+                                        .frame(width: 40*scale, alignment: .leading)
+                                    Text(orgList.orgs[idx].totalCostString)
+                                        .font(.system(size: 8*scale))
+                                        .foregroundColor(.text)
+                                        .frame(width: 50*scale, alignment: .leading)
+                                    Text(orgList.orgs[idx].balanceString)
+                                        .font(.system(size: 8*scale))
+                                        .foregroundColor(balanceColor(orgList.orgs[idx].balanceString))
                                         .frame(width: 45*scale, alignment: .leading)
-                                    Text(orgs[idx].price)
+                                    Text(orgList.orgs[idx].unitPriceString)
                                         .font(.system(size: 8*scale))
                                         .foregroundColor(.text)
                                         .frame(width: 45*scale, alignment: .leading)
-                                    Text(orgs[idx].periodSuccess)
-                                        .font(.system(size: 8*scale))
-                                        .foregroundColor(.text)
-                                        .frame(width: 80*scale, alignment: .leading)
-                                    Text(orgs[idx].success)
+                                    Text("\(orgList.orgs[idx].periodSuccess)")
                                         .font(.system(size: 8*scale))
                                         .foregroundColor(.text)
                                         .frame(width: 60*scale, alignment: .leading)
+                                    Text("\(orgList.orgs[idx].successCount)")
+                                        .font(.system(size: 8*scale))
+                                        .foregroundColor(.text)
+                                        .frame(width: 60*scale, alignment: .leading)
+                                    Text("\(orgList.orgs[idx].leftSuccessCount)")
+                                        .font(.system(size: 8*scale))
+                                        .foregroundColor(.text)
+                                        .frame(width: 70*scale, alignment: .leading)
                                 }
                                 .padding(.vertical, 8*scale)
-                                if idx != orgs.count - 1 {
+                                if idx != orgList.orgs.count - 1 {
                                     Divider()
                                         .background(Color(UIColor.systemGray5))
-                                        .frame(width: 460*scale)
+                                        .frame(width: 498*scale)
                                 }
                             }
                         }
@@ -167,5 +163,5 @@ struct BillingPreviewFullView: View {
 }
 
 #Preview {
-    BillingPreviewFullView()
+    BillingPreviewFullView(orgList: OrgListModel())
 }

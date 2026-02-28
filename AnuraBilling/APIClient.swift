@@ -84,9 +84,11 @@ extension APIClient {
         return try JSONDecoder().decode([MeasurementResponse].self, from: data)
     }
     
-    static func getMeasurementInfo(orgName: String, studyID: String) async throws -> MeasurementInfo {
+    static func getMeasurementInfo(orgName: String, studyID: String, progress: @escaping () -> Void) async throws -> MeasurementInfo {
         let completeMeasurements = try await getMeasurements(orgName: orgName, studyID: studyID, statusID: "COMPLETE")
+        progress()
         let partialMeasurements = try await getMeasurements(orgName: orgName, studyID: studyID, statusID: "PARTIAL")
+        progress()
         let completeCount = completeMeasurements.first?.TotalCount ?? 0
         let partialCount = partialMeasurements.first?.TotalCount ?? 0
         let successCount = completeCount + partialCount
