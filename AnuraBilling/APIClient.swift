@@ -69,12 +69,12 @@ extension APIClient {
         return try JSONDecoder().decode([StudyResponse].self, from: data)
     }
     
-    static func getMeasurements(orgName: String, studyID: String, statusID: String, date: String? = nil, endDate: String? = nil) async throws -> [MeasurementResponse] {
+    static func getMeasurements(orgName: String, studyID: String, statusID: String? = nil, date: String? = nil, endDate: String? = nil) async throws -> [MeasurementResponse] {
         var urlParameters: [String: Any] = ["Limit": 1,
-                                            "StudyID": studyID,
-                                            "StatusID": statusID]
+                                            "StudyID": studyID]
         if let date = date { urlParameters["Date"] = date }
         if let endDate = endDate { urlParameters["EndDate"] = endDate }
+        if let statusID = statusID { urlParameters["StatusID"] = statusID }
         let data = try await APIClient.shared.sendRequest(
             urlString: host + "/organizations/measurements",
             method: .get,
@@ -86,14 +86,18 @@ extension APIClient {
     }
     
     static func getMeasurementInfo(orgName: String, studyID: String, date: String? = nil, endDate: String? = nil, progress: @escaping () -> Void) async throws -> MeasurementInfo {
+        let totalMeasurements = try await getMeasurements(orgName: orgName, studyID: studyID, date: date, endDate: endDate)
+        progress()
         let completeMeasurements = try await getMeasurements(orgName: orgName, studyID: studyID, statusID: "COMPLETE", date: date, endDate: endDate)
         progress()
         let partialMeasurements = try await getMeasurements(orgName: orgName, studyID: studyID, statusID: "PARTIAL", date: date, endDate: endDate)
         progress()
+        let totalCount = totalMeasurements.first?.TotalCount ?? 0
         let completeCount = completeMeasurements.first?.TotalCount ?? 0
         let partialCount = partialMeasurements.first?.TotalCount ?? 0
         let successCount = completeCount + partialCount
-        return MeasurementInfo(orgName: orgName, studyID: studyID, successCount: successCount)
+        let failCount = totalCount - successCount
+        return MeasurementInfo(orgName: orgName, studyID: studyID, successCount: successCount, failCount: failCount)
     }
 
     
@@ -235,6 +239,10 @@ extension Date {
     
     var yyyyMMddhhmmssDateString: String {
         return dateFormatter("yyyyMMddhhmmss").string(from: self)
+    }
+    
+    var yyyyMMddhhmmssDateString2: String {
+        return dateFormatter("yyyy-MM-dd hh:mm:ss").string(from: self)
     }
         
     func dateFormatter(_ dateFormat: String) -> DateFormatter {

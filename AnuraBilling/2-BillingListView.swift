@@ -5,11 +5,25 @@ class OrgListModel: ObservableObject {
     @Published var orgs: [OrgInfo] = []
     @Published var billingPeriod = ""
     @Published var billingName = ""
+    @Published var updateTime = Date()
+}
+
+enum DateFilter: String, CaseIterable {
+    case all = "全部"
+    case today = "今天"
+    case yesterday = "昨天"
+    case beforeYesterday = "前天"
+    case thisWeek = "本周"
+    case lastWeek = "上周"
+    case thisMonth = "本月"
+    case lastMonth = "上月"
+    case halfYear = "半年内"
+    case oneYear = "一年内"
+    case custom = "自定义"
 }
 
 struct BillingListView: View {
-    let kInitialStartDate = Calendar.current.date(from: DateComponents(year: 2020, month: 1, day: 1)) ?? Date()
-    let kInitialEndDate = Date()
+    let kInitialStartDate = Calendar.current.date(from: DateComponents(year: 2026, month: 1, day: 1)) ?? Date()
     
     @StateObject private var orgList = OrgListModel()
     @State private var isRefreshing = false
@@ -18,75 +32,206 @@ struct BillingListView: View {
     @State private var completedRequests: Double = 0 // 已完成请求数
     @State private var progressTimer: Timer? = nil // 进度动画定时器
     @Environment(\.presentationMode) private var presentationMode
-    @State private var startDateString: String
-    @State private var endDateString: String
+    @State private var startDateString: String = ""
+    @State private var endDateString: String = ""
     @State private var isStartDatePickerPresented = false
     @State private var isEndDatePickerPresented = false
-    @State private var startDate: Date
-    @State private var endDate: Date
-    @StateObject private var alertManager = AlertManager()
-    
-    init() {
-        self.startDateString = kInitialStartDate.yyyyMMddDateString
-        self.startDate = kInitialStartDate
-        self.endDateString = "至今"
-        self.endDate = kInitialEndDate
+    @State private var startDate = Date() {
+        didSet {
+            startDateString = startDate.yyyyMMddDateString
+        }
     }
-    
+    @State private var endDate  = Date() {
+        didSet {
+            endDateString = endDate.yyyyMMddDateString
+        }
+    }
+    @State private var savedStartDate: Date?
+    @State private var savedEndDate: Date?
+    @StateObject private var alertManager = AlertManager()
+    @State private var selectedFilter: DateFilter = .all
+    @State private var isCustomDatePickerPresented = false
+
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
                 // 顶部日期选择和按钮
                 HStack(alignment: .bottom, spacing: 5) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack(spacing: 5) {
-                            Image(systemName: "calendar")
-                                .resizable()
-                                .frame(width: 11, height: 11)
-                                .foregroundColor(Color.text)
-                            Text("开始时间")
-                                .font(.system(size: 11))
-                                .foregroundColor(.text)
-                                .frame(width: 60, alignment: .leading)
+                    if isCustomDatePickerPresented {
+                        HStack(alignment: .bottom, spacing: 0) {
+                            VStack(alignment: .leading, spacing: 8) {
+                                HStack(spacing: 5) {
+                                    Image(systemName: "calendar")
+                                        .resizable()
+                                        .frame(width: 11, height: 11)
+                                        .foregroundColor(Color.text)
+                                    Text("开始时间")
+                                        .font(.system(size: 11))
+                                        .foregroundColor(.text)
+                                        .frame(width: 60, alignment: .leading)
+                                }
+
+                                Text(startDateString)
+                                    .font(.system(size: 11))
+                                    .frame(width: 80)
+                                    .foregroundColor(.lightBlue)
+                                    .padding(.vertical, 6)
+                                    .background(.lightPurple)
+                                    .cornerRadius(5)
+                                    .onTapGesture {
+                                        isStartDatePickerPresented = true
+                                    }
+                            }
+                            Text("~")
+                                .font(.system(size: 18))
+                                .foregroundColor(.gray)
+                                .padding(.bottom, 3)
+                                .frame(width: 25)
+                            VStack(alignment: .leading, spacing: 8) {
+                                HStack(spacing: 5) {
+                                    Image(systemName: "calendar")
+                                        .resizable()
+                                        .frame(width: 11, height: 11)
+                                        .foregroundColor(Color.text)
+                                    Text("截止时间")
+                                        .font(.system(size: 11))
+                                        .foregroundColor(.text)
+                                        .frame(width: 60, alignment: .leading)
+                                }
+
+                                Text(endDateString)
+                                    .font(.system(size: 11))
+                                    .frame(width: 80)
+                                    .foregroundColor(.lightBlue)
+                                    .padding(.vertical, 6)
+                                    .background(.lightPurple)
+                                    .cornerRadius(5)
+                                    .onTapGesture {
+                                        isEndDatePickerPresented = true
+                                    }
+                            }
+                            
+                            Button(action: {
+                                isCustomDatePickerPresented = false
+                                selectedFilter = .all
+                                requestData()
+                            }) {
+                                Image(systemName: "arrowshape.turn.up.backward.fill")
+                                    .resizable()
+                                    .frame(width: 15, height: 15)
+                                    .foregroundColor(.lightPurple)
+                                    .padding(6)
+                            }
                         }
 
-                        Text(startDateString)
-                            .font(.system(size: 11))
-                            .frame(width: 80)
-                            .foregroundColor(.lightBlue)
-                            .padding(.vertical, 6)
-                            .background(.lightPurple)
-                            .cornerRadius(5)
-                            .onTapGesture {
-                                isStartDatePickerPresented = true
-                            }
-                    }
-                    Text("~")
-                        .font(.system(size: 18))
-                        .foregroundColor(.gray)
-                        .padding(.bottom, 3)
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack(spacing: 5) {
-                            Image(systemName: "calendar")
-                                .resizable()
-                                .frame(width: 11, height: 11)
-                                .foregroundColor(Color.text)
-                            Text("截止时间")
-                                .font(.system(size: 11))
+                    } else {
+                        HStack(alignment: .center, spacing: 5) {
+                            Text("周期选择:")
+                                .font(.system(size: 14))
                                 .foregroundColor(.text)
-                                .frame(width: 60, alignment: .leading)
-                        }
-
-                        Text(endDateString)
-                            .font(.system(size: 11))
-                            .frame(width: 80)
-                            .foregroundColor(.lightBlue)
-                            .padding(.vertical, 6)
-                            .background(.lightPurple)
-                            .cornerRadius(5)
-                            .onTapGesture {
-                                isEndDatePickerPresented = true
+                                .padding(.trailing, 5)
+                            Menu {
+                                ForEach(DateFilter.allCases, id: \ .self) { filter in
+                                    Button(action: {
+                                        selectedFilter = filter
+                                        if filter == .custom {
+                                            startDate = savedStartDate ?? kInitialStartDate
+                                            if let savedEndDate = savedEndDate {
+                                                endDate = savedEndDate
+                                            } else {
+                                                endDate = Date()
+                                                endDateString = "至今"
+                                            }
+                                            isCustomDatePickerPresented = true
+                                        } else {
+                                            // 计算时间区间
+                                            let now = Date()
+                                            var calendar = Calendar.current
+                                            calendar.firstWeekday = 2 // 强制一周从周一开始，其他国家可能是从周日开始
+                                            switch filter {
+                                            case .all:
+                                                startDateString = ""
+                                                endDateString = ""
+                                                startDate = Date()
+                                                endDate = Date()
+                                            case .today:
+                                                let start = calendar.startOfDay(for: now)
+                                                startDate = start
+                                                endDate = now
+                                            case .yesterday:
+                                                let yesterday = calendar.date(byAdding: .day, value: -1, to: now) ?? now
+                                                let start = calendar.startOfDay(for: yesterday)
+                                                let end = calendar.date(bySettingHour: 23, minute: 59, second: 59, of: yesterday) ?? yesterday
+                                                startDate = start
+                                                endDate = end
+                                            case .beforeYesterday:
+                                                let beforeYesterday = calendar.date(byAdding: .day, value: -2, to: now) ?? now
+                                                let start = calendar.startOfDay(for: beforeYesterday)
+                                                let end = calendar.date(bySettingHour: 23, minute: 59, second: 59, of: beforeYesterday) ?? beforeYesterday
+                                                startDate = start
+                                                endDate = end
+                                            case .thisWeek:
+                                                let weekStart = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: now)) ?? now
+                                                let weekEnd = calendar.date(byAdding: .day, value: 6, to: weekStart) ?? now
+                                                let endOfWeek = calendar.date(bySettingHour: 23, minute: 59, second: 59, of: weekEnd) ?? weekEnd
+                                                startDate = weekStart
+                                                endDate = endOfWeek
+                                            case .lastWeek:
+                                                let weekStart = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: now)) ?? now
+                                                let lastWeekStart = calendar.date(byAdding: .day, value: -7, to: weekStart) ?? weekStart
+                                                let lastWeekEnd = calendar.date(byAdding: .day, value: -1, to: weekStart) ?? weekStart
+                                                let endOfLastWeek = calendar.date(bySettingHour: 23, minute: 59, second: 59, of: lastWeekEnd) ?? lastWeekEnd
+                                                startDate = lastWeekStart
+                                                endDate = endOfLastWeek
+                                            case .thisMonth:
+                                                let comps = calendar.dateComponents([.year, .month], from: now)
+                                                let monthStart = calendar.date(from: comps) ?? now
+                                                startDate = monthStart
+                                                endDate = now
+                                            case .lastMonth:
+                                                let lastMonthDate = calendar.date(byAdding: .month, value: -1, to: now) ?? now
+                                                let lastMonthComps = calendar.dateComponents([.year, .month], from: lastMonthDate)
+                                                let lastMonthStart = calendar.date(from: lastMonthComps) ?? lastMonthDate
+                                                let range = calendar.range(of: .day, in: .month, for: lastMonthStart)
+                                                let lastDay = range?.count ?? 30
+                                                let lastMonthEnd = calendar.date(bySetting: .day, value: lastDay, of: lastMonthStart) ?? lastMonthStart
+                                                let endOfLastMonth = calendar.date(bySettingHour: 23, minute: 59, second: 59, of: lastMonthEnd) ?? lastMonthEnd
+                                                startDate = lastMonthStart
+                                                endDate = endOfLastMonth
+                                            case .halfYear:
+                                                let halfYearAgo = calendar.date(byAdding: .month, value: -6, to: now) ?? now
+                                                startDate = halfYearAgo
+                                                endDate = now
+                                            case .oneYear:
+                                                let oneYearAgo = calendar.date(byAdding: .year, value: -1, to: now) ?? now
+                                                startDate = oneYearAgo
+                                                endDate = now
+                                            default:
+                                                break
+                                            }
+                                        }
+                                        requestData()
+                                    }) {
+                                        Text(filter.rawValue)
+                                    }
+                                }
+                            } label: {
+                                HStack {
+                                    Text(selectedFilter.rawValue)
+                                        .font(.system(size: 11, weight: .medium))
+                                        .foregroundColor(.lightBlue)
+                                    Image(systemName: "chevron.down")
+                                        .font(.system(size: 12))
+                                        .foregroundColor(.lightBlue)
+                                }
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(Color.lightPurple)
+                                .cornerRadius(5)
                             }
+
+                            Spacer()
+                        }
                     }
                     
                     Spacer()
@@ -97,7 +242,7 @@ struct BillingListView: View {
                                 .foregroundColor(.white)
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 8)
-                                .background(orgList.orgs.isEmpty ? Color.gray : Color.deepPurple)
+                                .background(Color.deepPurple)
                                 .cornerRadius(5)
                         }
                         .buttonStyle(PlainButtonStyle())
@@ -109,7 +254,7 @@ struct BillingListView: View {
                             .foregroundColor(.white)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 8)
-                            .background(orgList.orgs.isEmpty ? Color.gray : Color.deepPurple)
+                            .background(Color.deepPurple)
                             .cornerRadius(5)
                     }
                     .buttonStyle(PlainButtonStyle())
@@ -176,6 +321,11 @@ struct BillingListView: View {
                             .padding(20)
                     }
                     Spacer()
+                    let text = isRefreshing ? "数据更新中，请稍后..." : "上次更新时间: \(orgList.updateTime.yyyyMMddhhmmssDateString2)"
+                    Text(text)
+                        .font(.system(size: 11))
+                        .foregroundColor(.main)
+                    Spacer()
                     RefreshButton(isRefreshing: $isRefreshing, refreshCompleted: $refreshCompleted, requestData: requestData)
                 }
                 .background(
@@ -196,24 +346,17 @@ struct BillingListView: View {
                     HStack {
                         Button("重置") {
                             startDate = kInitialStartDate
-                            startDateString = startDate.yyyyMMddDateString
+                            savedStartDate = nil
                             isStartDatePickerPresented = false
-                            withAnimation(.easeInOut(duration: 0.25)) {
-                                isRefreshing = true
-                            }
-                            refreshCompleted = false
                             requestData()
                         }
                         .padding()
                         Spacer()
                         Button("确定") {
+                            savedStartDate = startDate
                             startDateString = startDate.yyyyMMddDateString
                             isStartDatePickerPresented = false
                             // 日历变更后自动刷新
-                            withAnimation(.easeInOut(duration: 0.25)) {
-                                isRefreshing = true
-                            }
-                            refreshCompleted = false
                             requestData()
                         }
                         .padding()
@@ -231,24 +374,18 @@ struct BillingListView: View {
                     HStack {
                         Button("重置") {
                             endDate = Date()
+                            savedEndDate = nil
                             endDateString = "至今"
                             isEndDatePickerPresented = false
-                            withAnimation(.easeInOut(duration: 0.25)) {
-                                isRefreshing = true
-                            }
-                            refreshCompleted = false
                             requestData()
                         }
                         .padding()
                         Spacer()
                         Button("确定") {
+                            savedEndDate = endDate
                             endDateString = endDate.yyyyMMddDateString
                             isEndDatePickerPresented = false
                             // 日历变更后自动刷新
-                            withAnimation(.easeInOut(duration: 0.25)) {
-                                isRefreshing = true
-                            }
-                            refreshCompleted = false
                             requestData()
                         }
                         .padding()
@@ -272,16 +409,17 @@ struct BillingListView: View {
         }
         .onAppear {
             if orgList.orgs.isEmpty && !isRefreshing {
-                withAnimation(.easeInOut(duration: 0.25)) {
-                    isRefreshing = true
-                }
-                refreshCompleted = false
                 requestData()
             }
         }
     }
     
     func requestData() {
+        withAnimation(.easeInOut(duration: 0.25)) {
+            isRefreshing = true
+        }
+        refreshCompleted = false
+
         totalRequests = 0
         completedRequests = 0
         let userCount = SharedUsers.count
@@ -304,7 +442,7 @@ struct BillingListView: View {
                 let studies = try await getStudies()
                 let studyCount = studies.values.flatMap { $0 }.count
                 let progress = completedRequests / totalRequests
-                totalRequests += Double(studyCount) * 2
+                totalRequests += Double(studyCount) * (selectedFilter == .all ? 3 : 6)
                 completedRequests = progress * totalRequests
                 completedRequests = max(Double(userCount), completedRequests)
                 progressTimer?.invalidate()
@@ -315,23 +453,37 @@ struct BillingListView: View {
                 // 统计 updateStudies 需要的请求数
                 var studiesCopy = studies
                 try await updateStudies(&studiesCopy, progress: { completedRequests += 1 })
+                var studiesCopy2 = studies
+                if selectedFilter == .all {
+                    studiesCopy2 = studiesCopy
+                } else {
+                    try await updateStudies(&studiesCopy2, startDate, endDate, progress: { completedRequests += 1 })
+                }
+
                 var orgs = [OrgInfo]()
                 for user in SharedUsers {
                     let successCount = totalSuccessMeasurements(for: user, in: studiesCopy)
+                    let successCount2 = totalSuccessMeasurements(for: user, in: studiesCopy2)
                     let org = OrgInfo(name: user.orgName,
                                       successCount: successCount,
                                       totalDeposits: user.deposits,
                                       unitPrice: user.unitPrice,
-                                      periodSuccess: successCount,
+                                      periodSuccess: successCount2,
                                       licenses: licences[user.orgName] ?? [],
-                                      studies: studiesCopy[user.orgName] ?? [])
+                                      studies: studiesCopy[user.orgName] ?? [],
+                                      periodStudies: studiesCopy2[user.orgName] ?? [])
                     orgs.append(org)
                 }
                 if isRefreshing {
                     refreshCompleted = true // 通知刷新完成
                     orgList.orgs = orgs
-                    orgList.billingPeriod = "\(startDateString) ~ \(endDateString)"
-                    orgList.billingName = "Nuralogix账单" + Date().yyyyMMddhhmmssDateString
+                    if selectedFilter == .custom {
+                        orgList.billingPeriod = "\(startDateString) ~ \(endDateString)"
+                    } else {
+                        orgList.billingPeriod = selectedFilter.rawValue
+                    }
+                    orgList.updateTime = Date()
+                    orgList.billingName = "NuraLogix账单" + orgList.updateTime.yyyyMMddhhmmssDateString
                 }
             }catch {
                 print("getData error: \(error)")
@@ -401,27 +553,33 @@ struct BillingListView: View {
         return studiesDic
     }
 
-    func updateStudies(_ studyDic: inout [String: [StudyResponse]], progress: @escaping () -> Void) async throws {
-        let dateStr = startDate.toUTCString()
-        let endDateStr = endDate.toUTCString()
+    func updateStudies(_ studyDic: inout [String: [StudyResponse]], _ startDate: Date? = nil, _ endDate: Date? = nil, progress: @escaping () -> Void) async throws {
+        var dateStr: String? = nil
+        var endDateStr: String? = nil
+        if let startDate = startDate { dateStr = startDate.toUTCString() }
+        if let endDate = endDate { endDateStr = endDate.toUTCString() }
+        
         for (orgName, studies) in studyDic {
             var updatedStudies: [StudyResponse] = studies
-            await withTaskGroup(of: (Int, Int?).self) { group in
+            await withTaskGroup(of: (Int, Int?, Int?).self) { group in
                 for (index, study) in studies.enumerated() {
                     group.addTask {
                         do {
                             let info = try await APIClient.getMeasurementInfo(orgName: orgName, studyID: study.ID, date: dateStr, endDate: endDateStr, progress: progress)
                             progress()
-                            return (index, info.successCount)
+                            return (index, info.successCount, info.failCount)
                         } catch {
                             progress()
-                            return (index, nil)
+                            return (index, nil, nil)
                         }
                     }
                 }
-                for await (index, successCount) in group {
+                for await (index, successCount, failCount) in group {
                     if let count = successCount {
                         updatedStudies[index].successMeasurements = count
+                    }
+                    if let count = failCount {
+                        updatedStudies[index].failCount = count
                     }
                 }
             }
@@ -538,12 +696,12 @@ struct RefreshButton: View {
         ZStack() {
             // 三色分段圆环
             ZStack {
-                RingSegment(startAngle: .degrees(0), endAngle: .degrees(120))
+                RingSegment(startAngle: .degrees(0), endAngle: .degrees(110))
                     .stroke(Color.deepPurple, lineWidth: 3)
-                RingSegment(startAngle: .degrees(120), endAngle: .degrees(240))
-                    .stroke(Color.lightBlue, lineWidth: 3)
-                RingSegment(startAngle: .degrees(240), endAngle: .degrees(360))
-                    .stroke(Color.green, lineWidth: 3)
+                RingSegment(startAngle: .degrees(120), endAngle: .degrees(230))
+                    .stroke(Color.deepPurple, lineWidth: 3)
+                RingSegment(startAngle: .degrees(240), endAngle: .degrees(350))
+                    .stroke(Color.deepPurple, lineWidth: 3)
             }
             .frame(width: 40, height: 40)
             .rotationEffect(.degrees(rotation))
@@ -551,10 +709,6 @@ struct RefreshButton: View {
             // 刷新按钮
             Button(action: {
                 if isRefreshing { return }
-                withAnimation(.easeInOut(duration: 0.25)) {
-                    isRefreshing.toggle()
-                }
-                refreshCompleted = false // 重置完成状态
                 startRotationAnimation()
                 requestData()
             }) {

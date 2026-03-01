@@ -9,7 +9,8 @@ struct OrgInfo: Identifiable {
     let periodSuccess: Int
     let licenses: [LicenseResponse]
     let studies: [StudyResponse]
-    
+    let periodStudies: [StudyResponse]
+
     var licenseCount: Int {
         return licenses.count
     }
@@ -58,6 +59,7 @@ struct MeasurementInfo: Codable {
     let orgName: String
     let studyID: String
     let successCount: Int
+    let failCount: Int
 }
 
 // MARK: - LoginResponse Struct
@@ -142,12 +144,7 @@ struct StudyResponse: Codable {
     let Measurements: Int
     var TotalCount: Int?
     var successMeasurements: Int?
-    var failCount: Int? {
-        guard let successMeasurements = successMeasurements else {
-            return nil
-        }
-        return Measurements - successMeasurements
-    }
+    var failCount: Int?
     
     var statusString: String {
         switch StatusID {

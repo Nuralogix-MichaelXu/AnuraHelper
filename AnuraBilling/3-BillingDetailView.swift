@@ -206,14 +206,16 @@ struct BillingDetailView: View {
                                         .background(Color.white)
                                         ForEach(org.studies.indices, id: \ .self) { idx in
                                             let study = org.studies[idx]
+                                            let study_period = org.periodStudies[idx]
                                             let cost = org.unitPrice * Double(study.successMeasurements ?? 0)
+                                            let cost_period = org.unitPrice * Double(study_period.successMeasurements ?? 0)
                                             HStack(spacing: 0) {
                                                 Text(study.createdDateString).frame(width: 70, alignment: .leading)
                                                 Text(study.Name).frame(width: 100, alignment: .leading)
                                                 Text(study.statusString).frame(width: 50, alignment: .leading)
-                                                Text("\(study.successMeasurements ?? 0)").frame(width: 70, alignment: .leading)
-                                                Text("\(study.failCount ?? 0)").frame(width: 70, alignment: .leading)
-                                                Text(formatAmount(cost)).frame(width: 60, alignment: .leading)
+                                                Text("\(study_period.successMeasurements ?? 0)").frame(width: 70, alignment: .leading)
+                                                Text("\(study_period.failCount ?? 0)").frame(width: 70, alignment: .leading)
+                                                Text(formatAmount(cost_period)).frame(width: 60, alignment: .leading)
                                                 Text("\(study.successMeasurements ?? 0)").frame(width: 60, alignment: .leading)
                                                 Text("\(study.failCount ?? 0)").frame(width: 60, alignment: .leading)
                                                 Text(formatAmount(cost)).frame(width: 50, alignment: .leading)
@@ -230,13 +232,13 @@ struct BillingDetailView: View {
                                                 .padding(.horizontal, 20)
                                         }
                                         
-                                        let totalPeriodSuccessCount = org.studies.reduce(0) {
+                                        let totalPeriodSuccessCount = org.periodStudies.reduce(0) {
                                             $0 + ( $1.successMeasurements ?? 0 )
                                         }
-                                        let totalPeriodFailCount = org.studies.reduce(0) {
+                                        let totalPeriodFailCount = org.periodStudies.reduce(0) {
                                             $0 + ( $1.failCount ?? 0 )
                                         }
-                                        let totalPeriodCost = org.studies.reduce(0) {
+                                        let totalPeriodCost = org.periodStudies.reduce(0) {
                                             $0 + org.unitPrice * Double($1.successMeasurements ?? 0)
                                         }
                                         let totalSuccessCount = org.studies.reduce(0) {
@@ -309,7 +311,8 @@ struct BillingDetailView: View {
                 unitPrice: 0,
                 periodSuccess: 0,
                 licenses:[],
-                studies:[]
+                studies:[],
+                periodStudies: [],
             )), period: "2026-01-01 ~ 2026-01-31"
     )
 }

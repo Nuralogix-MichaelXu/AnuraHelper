@@ -77,7 +77,7 @@ struct BillingSendingView: View {
                                 .font(.system(size: 18))
                                 .foregroundColor(.text)
                             
-                            Text("账单预览")
+                            Text("邮件设置")
                                 .font(.system(size: 18, weight: .bold))
                                 .foregroundColor(.text)
                         }
@@ -255,7 +255,7 @@ struct BillingSendingView: View {
                         let base64 = imageData.base64EncodedString()
                         let imgTag = "<img src=\"data:image/jpeg;base64,\(base64)\" style=\"max-width:100%;border-radius:8px;\">"
                         // 2. 拼接 HTML
-                        let htmlBody = "<div style=\"font-size:15px;line-height:1.7;color:#222;\">\(content.replacingOccurrences(of: "\n", with: "<br>"))<br><br>\(imgTag)</div>"
+                        let htmlBody = "<div style=\"font-size:15px;line-height:1.7;color:#222;padding:24px;\">\(content.replacingOccurrences(of: "\n", with: "<br>"))<br><br>\(imgTag)</div>"
                         emailInfo.mailHTMLBody = htmlBody
                         emailInfo.title = orgList.billingName
                         showMail = true
@@ -311,7 +311,7 @@ struct BillingSendingView: View {
         .sheet(isPresented: $showMail) {
             if MFMailComposeViewController.canSendMail() {
                 MailView(
-                    recipients: [emailInfo.toEmail],
+                    recipients: emailInfo.toEmail.components(separatedBy: ";"),
                     subject: emailInfo.title,
                     htmlBody: emailInfo.mailHTMLBody,
                     resultHandler: { result in

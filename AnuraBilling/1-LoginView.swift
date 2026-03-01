@@ -83,7 +83,7 @@ struct LoginView: View {
                     }
                     
                     // 底部说明文字
-                    BottomNote(text: "· 请使用Nuralogix提供的管理员账号登录 ·")
+                    BottomNote(text: "· 请使用NuraLogix提供的管理员账号登录 ·")
                         .padding(.top, 20)
                     
                     Spacer()
@@ -246,7 +246,7 @@ struct LoginInputArea: View {
                 Spacer()
                 InputField(label: "电子邮箱", placeholder: "example@gmail.com", text: $email)
                 Spacer()
-                InputField(label: "密码", placeholder: "123456", text: $password)
+                InputField(label: "密码", placeholder: "123456", text: $password, isSecure: true)
             }
             .padding(.horizontal, 30)
             .frame(height: 186)
@@ -255,11 +255,14 @@ struct LoginInputArea: View {
 }
 
 // 输入框组件
+// 3. 修改 InputField 组件
 struct InputField: View {
     var label: String
     var placeholder: String
     @Binding var text: String
-    
+    var isSecure: Bool = false
+    @State var isPasswordVisible: Bool = false
+
     var body: some View {
         HStack {
             Text(label)
@@ -274,13 +277,32 @@ struct InputField: View {
                         .foregroundColor(Color(UIColor.systemGray5))
                         .padding(10)
                 }
-                TextField("", text: $text)
-                    .font(.system(size: 14))
-                    .foregroundColor(.text)
-                    .padding(10)
-                    .textFieldStyle(PlainTextFieldStyle())
-                    .disableAutocorrection(true)
-                    .autocapitalization(.none)
+                HStack {
+                    if isSecure && !isPasswordVisible {
+                        SecureField("", text: $text)
+                            .font(.system(size: 14))
+                            .foregroundColor(.text)
+                            .padding(10)
+                            .disableAutocorrection(true)
+                            .autocapitalization(.none)
+                    } else {
+                        TextField("", text: $text)
+                            .font(.system(size: 14))
+                            .foregroundColor(.text)
+                            .padding(10)
+                            .disableAutocorrection(true)
+                            .autocapitalization(.none)
+                    }
+                    if isSecure {
+                        Button(action: {
+                            isPasswordVisible.toggle()
+                        }) {
+                            Image(systemName: !isPasswordVisible ? "eye.slash" : "eye")
+                                .foregroundColor(.gray)
+                        }
+                        .padding(.trailing, 8)
+                    }
+                }
             }
             .overlay(
                 RoundedRectangle(cornerRadius: 8)
