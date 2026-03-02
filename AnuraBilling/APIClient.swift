@@ -31,7 +31,7 @@ extension APIClient {
             "Email": email,
             "Password": password,
             "Identifier": org,
-            "TokenExpiresIn": 3600*24
+            "TokenExpiresIn": 3600 * 24
         ]
         let data = try await APIClient.shared.sendRequest(
             urlString: host + "/organizations/auth",
@@ -46,12 +46,13 @@ extension APIClient {
     static func getLicences(orgName: String, limit: Int) async throws -> [LicenseResponse] {
         let urlParameters: [String: Any] = ["Limit": limit]
         
-        let data = try await APIClient.shared.sendRequest(
+        let data = try await APIClient.shared.sendRequestWithTokenRefresh(
             urlString: host + "/licenses/organization",
             method: .get,
             urlParameters: urlParameters,
             body: nil,
-            headers: authHeader(orgName)
+            headers: authHeader(orgName),
+            orgName: orgName
         )
         return try JSONDecoder().decode([LicenseResponse].self, from: data)
     }
@@ -59,12 +60,13 @@ extension APIClient {
     static func getStudies(orgName: String, limit: Int) async throws -> [StudyResponse] {
         let urlParameters: [String: Any] = ["Limit": limit]
         
-        let data = try await APIClient.shared.sendRequest(
+        let data = try await APIClient.shared.sendRequestWithTokenRefresh(
             urlString: host + "/studies",
             method: .get,
             urlParameters: urlParameters,
             body: nil,
-            headers: authHeader(orgName)
+            headers: authHeader(orgName),
+            orgName: orgName
         )
         return try JSONDecoder().decode([StudyResponse].self, from: data)
     }
@@ -75,12 +77,13 @@ extension APIClient {
         if let date = date { urlParameters["Date"] = date }
         if let endDate = endDate { urlParameters["EndDate"] = endDate }
         if let statusID = statusID { urlParameters["StatusID"] = statusID }
-        let data = try await APIClient.shared.sendRequest(
+        let data = try await APIClient.shared.sendRequestWithTokenRefresh(
             urlString: host + "/organizations/measurements",
             method: .get,
             urlParameters: urlParameters,
             body: nil,
-            headers: authHeader(orgName)
+            headers: authHeader(orgName),
+            orgName: orgName
         )
         return try JSONDecoder().decode([MeasurementResponse].self, from: data)
     }
@@ -102,9 +105,9 @@ extension APIClient {
 
     
     static func authHeader(_ orgName: String) async throws -> [String: String] {
-        let token = SharedUsers.filter { user in
-            return user.orgName == orgName
-        }.first?.token
+        // 优先从SharedUsers获取token
+        let token = SharedUsers.first(where: { $0.orgName == orgName })?.token
+            ?? UserStorage.load().first(where: { $0.orgName == orgName })?.token
         guard let token = token else {
             throw NSError(domain: "APIClient", code: -4, userInfo: [NSLocalizedDescriptionKey: "未找到对应组织的授权Token"])
         }
@@ -141,7 +144,8 @@ class APIClient {
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             request.httpBody = try? JSONSerialization.data(withJSONObject: params, options: [])
         }
-        
+        print("API->: \(requestURL)")
+
         let task = URLSession.shared.dataTask(with: request) { data, response, error in
             if let error = error {
                 completion(.failure(error))
@@ -160,7 +164,6 @@ class APIClient {
                 completion(.failure(apiError))
                 return
             }
-//            print("API->: \(requestURL)")
             completion(.success(data))
         }
         task.resume()
@@ -215,6 +218,49 @@ class APIClient {
                 case .failure(let error):
                     continuation.resume(throwing: error)
                 }
+            }
+        }
+    }
+    
+    // MARK: - Async sendRequest with token refresh
+    func sendRequestWithTokenRefresh(
+        urlString: String,
+        method: HTTPMethod = .get,
+        urlParameters: [String: Any]? = nil,
+        body: [String: Any]? = nil,
+        headers: [String: String]? = nil,
+        orgName: String? = nil
+    ) async throws -> Data {
+        do {
+            return try await sendRequest(
+                urlString: urlString,
+                method: method,
+                urlParameters: urlParameters,
+                body: body,
+                headers: headers
+            )
+        } catch {
+            if (error as NSError).code == -1,
+               let orgName = orgName,
+               let userIdx = SharedUsers.firstIndex(where: { $0.orgName == orgName }) {
+                let user = SharedUsers[userIdx]
+                // 自动刷新token
+                let loginResponse = try await APIClient.login(email: user.email, password: user.password, org: user.orgName)
+                // 更新token到SharedUsers和UserStorage
+                var updatedUser = user
+                updatedUser.token = loginResponse.Token
+                SharedUsers[userIdx] = updatedUser
+                UserStorage.save(users: SharedUsers)
+                // 重试原请求
+                return try await sendRequest(
+                    urlString: urlString,
+                    method: method,
+                    urlParameters: urlParameters,
+                    body: body,
+                    headers: APIClient.authHeader(orgName)
+                )
+            } else {
+                throw error
             }
         }
     }

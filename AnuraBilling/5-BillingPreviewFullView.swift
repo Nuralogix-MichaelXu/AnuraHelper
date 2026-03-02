@@ -66,7 +66,7 @@ struct BillingPreviewFullView: View {
                                     Text(orgList.orgs[idx].totalDepositsString).font(.system(size: 8*scale)).foregroundColor(.text).frame(width: 50*scale, alignment: .leading)
                                     Text(orgList.orgs[idx].periodCostString).font(.system(size: 8*scale)).foregroundColor(.text).frame(width: 40*scale, alignment: .leading)
                                     Text(orgList.orgs[idx].totalCostString).font(.system(size: 8*scale)).foregroundColor(.text).frame(width: 50*scale, alignment: .leading)
-                                    Text(orgList.orgs[idx].balanceString).font(.system(size: 8*scale)).foregroundColor(balanceColor(orgList.orgs[idx].balanceString)).frame(width: 45*scale, alignment: .leading)
+                                    Text(orgList.orgs[idx].balanceString).font(.system(size: 8*scale)).foregroundColor(orgList.orgs[idx].balanceColor).frame(width: 45*scale, alignment: .leading)
                                     Text(orgList.orgs[idx].unitPriceString).font(.system(size: 8*scale)).foregroundColor(.text).frame(width: 45*scale, alignment: .leading)
                                     Text("\(orgList.orgs[idx].periodSuccess)").font(.system(size: 8*scale)).foregroundColor(.text).frame(width: 60*scale, alignment: .leading)
                                     Text("\(orgList.orgs[idx].successCount)").font(.system(size: 8*scale)).foregroundColor(.text).frame(width: 60*scale, alignment: .leading)
@@ -93,14 +93,6 @@ struct BillingPreviewFullView: View {
         }
         .background(Color.white)
         .navigationBarHidden(true)
-    }
-    
-    func balanceColor(_ balance: String) -> Color {
-        if let val = Double(balance), val < 0 {
-            return Color.red
-        } else {
-            return Color.green
-        }
     }
 }
 

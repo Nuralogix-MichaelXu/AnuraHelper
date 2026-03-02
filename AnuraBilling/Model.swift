@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 struct OrgInfo: Identifiable {
     let id = UUID()
@@ -40,6 +41,14 @@ struct OrgInfo: Identifiable {
 
     var balanceString: String {
         return formatAmount(balance)
+    }
+    
+    var balanceColor: Color {
+        if balance != 0 {
+            return balance > 0 ? Color.greenText : Color.redText
+        } else {
+            return Color.text
+        }
     }
 
     var periodCostString: String {

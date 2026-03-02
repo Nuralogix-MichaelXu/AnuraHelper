@@ -17,13 +17,13 @@ enum DateFilter: String, CaseIterable {
     case lastWeek = "上周"
     case thisMonth = "本月"
     case lastMonth = "上月"
-    case halfYear = "半年内"
-    case oneYear = "一年内"
+    case halfYear = "近半年"
+    case oneYear = "近一年"
     case custom = "自定义"
 }
 
 struct BillingListView: View {
-    let kInitialStartDate = Calendar.current.date(from: DateComponents(year: 2026, month: 1, day: 1)) ?? Date()
+    let kInitialStartDate = Calendar.current.date(from: DateComponents(year: 2020, month: 1, day: 1)) ?? Date()
     
     @StateObject private var orgList = OrgListModel()
     @State private var isRefreshing = false
@@ -50,8 +50,11 @@ struct BillingListView: View {
     @State private var savedEndDate: Date?
     @StateObject private var alertManager = AlertManager()
     @State private var selectedFilter: DateFilter = .all
+    @State private var lastSelectedFilter: DateFilter = .all
     @State private var isCustomDatePickerPresented = false
-
+    @State private var isMenuOpen = false
+    @State private var isExpanded = false
+    
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
@@ -112,7 +115,9 @@ struct BillingListView: View {
                             }
                             
                             Button(action: {
-                                isCustomDatePickerPresented = false
+                                withAnimation(.easeInOut(duration: 0.25)) {
+                                    isCustomDatePickerPresented = false
+                                }
                                 selectedFilter = .all
                                 requestData()
                             }) {
@@ -125,112 +130,39 @@ struct BillingListView: View {
                         }
 
                     } else {
-                        HStack(alignment: .center, spacing: 5) {
-                            Text("周期选择:")
-                                .font(.system(size: 14))
-                                .foregroundColor(.text)
-                                .padding(.trailing, 5)
-                            Menu {
-                                ForEach(DateFilter.allCases, id: \ .self) { filter in
-                                    Button(action: {
-                                        selectedFilter = filter
-                                        if filter == .custom {
-                                            startDate = savedStartDate ?? kInitialStartDate
-                                            if let savedEndDate = savedEndDate {
-                                                endDate = savedEndDate
-                                            } else {
-                                                endDate = Date()
-                                                endDateString = "至今"
-                                            }
-                                            isCustomDatePickerPresented = true
-                                        } else {
-                                            // 计算时间区间
-                                            let now = Date()
-                                            var calendar = Calendar.current
-                                            calendar.firstWeekday = 2 // 强制一周从周一开始，其他国家可能是从周日开始
-                                            switch filter {
-                                            case .all:
-                                                startDateString = ""
-                                                endDateString = ""
-                                                startDate = Date()
-                                                endDate = Date()
-                                            case .today:
-                                                let start = calendar.startOfDay(for: now)
-                                                startDate = start
-                                                endDate = now
-                                            case .yesterday:
-                                                let yesterday = calendar.date(byAdding: .day, value: -1, to: now) ?? now
-                                                let start = calendar.startOfDay(for: yesterday)
-                                                let end = calendar.date(bySettingHour: 23, minute: 59, second: 59, of: yesterday) ?? yesterday
-                                                startDate = start
-                                                endDate = end
-                                            case .beforeYesterday:
-                                                let beforeYesterday = calendar.date(byAdding: .day, value: -2, to: now) ?? now
-                                                let start = calendar.startOfDay(for: beforeYesterday)
-                                                let end = calendar.date(bySettingHour: 23, minute: 59, second: 59, of: beforeYesterday) ?? beforeYesterday
-                                                startDate = start
-                                                endDate = end
-                                            case .thisWeek:
-                                                let weekStart = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: now)) ?? now
-                                                let weekEnd = calendar.date(byAdding: .day, value: 6, to: weekStart) ?? now
-                                                let endOfWeek = calendar.date(bySettingHour: 23, minute: 59, second: 59, of: weekEnd) ?? weekEnd
-                                                startDate = weekStart
-                                                endDate = endOfWeek
-                                            case .lastWeek:
-                                                let weekStart = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: now)) ?? now
-                                                let lastWeekStart = calendar.date(byAdding: .day, value: -7, to: weekStart) ?? weekStart
-                                                let lastWeekEnd = calendar.date(byAdding: .day, value: -1, to: weekStart) ?? weekStart
-                                                let endOfLastWeek = calendar.date(bySettingHour: 23, minute: 59, second: 59, of: lastWeekEnd) ?? lastWeekEnd
-                                                startDate = lastWeekStart
-                                                endDate = endOfLastWeek
-                                            case .thisMonth:
-                                                let comps = calendar.dateComponents([.year, .month], from: now)
-                                                let monthStart = calendar.date(from: comps) ?? now
-                                                startDate = monthStart
-                                                endDate = now
-                                            case .lastMonth:
-                                                let lastMonthDate = calendar.date(byAdding: .month, value: -1, to: now) ?? now
-                                                let lastMonthComps = calendar.dateComponents([.year, .month], from: lastMonthDate)
-                                                let lastMonthStart = calendar.date(from: lastMonthComps) ?? lastMonthDate
-                                                let range = calendar.range(of: .day, in: .month, for: lastMonthStart)
-                                                let lastDay = range?.count ?? 30
-                                                let lastMonthEnd = calendar.date(bySetting: .day, value: lastDay, of: lastMonthStart) ?? lastMonthStart
-                                                let endOfLastMonth = calendar.date(bySettingHour: 23, minute: 59, second: 59, of: lastMonthEnd) ?? lastMonthEnd
-                                                startDate = lastMonthStart
-                                                endDate = endOfLastMonth
-                                            case .halfYear:
-                                                let halfYearAgo = calendar.date(byAdding: .month, value: -6, to: now) ?? now
-                                                startDate = halfYearAgo
-                                                endDate = now
-                                            case .oneYear:
-                                                let oneYearAgo = calendar.date(byAdding: .year, value: -1, to: now) ?? now
-                                                startDate = oneYearAgo
-                                                endDate = now
-                                            default:
-                                                break
-                                            }
-                                        }
-                                        requestData()
-                                    }) {
-                                        Text(filter.rawValue)
-                                    }
-                                }
-                            } label: {
-                                HStack {
-                                    Text(selectedFilter.rawValue)
-                                        .font(.system(size: 11, weight: .medium))
-                                        .foregroundColor(.lightBlue)
-                                    Image(systemName: "chevron.down")
-                                        .font(.system(size: 12))
-                                        .foregroundColor(.lightBlue)
-                                }
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 6)
-                                .background(Color.lightPurple)
-                                .cornerRadius(5)
-                            }
+                        VStack(alignment: .leading, spacing: 0) {
+                            HStack {
+                                Text("周期选择:")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.text.opacity(0.75))
+                                    .padding(.trailing, 5)
 
-                            Spacer()
+                                // 自定义下拉菜单按钮
+                                Button(action: {
+                                    isMenuOpen.toggle()
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) {
+                                        isExpanded = true
+                                    }
+                                }) {
+                                    HStack {
+                                        Text(selectedFilter.rawValue)
+                                            .font(.system(size: 11, weight: .medium))
+                                            .foregroundColor(.lightBlue)
+                                        Image(systemName: "chevron.down")
+                                            .font(.system(size: 12))
+                                            .foregroundColor(.lightBlue)
+                                            .rotationEffect(.degrees(isMenuOpen ? 180 : 0))
+                                    }
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                                    .background(Color.lightPurple)
+                                    .cornerRadius(5)
+                                }
+                                
+                                Spacer()
+                            }
+                            .zIndex(1)
+                            
                         }
                     }
                     
@@ -312,6 +244,7 @@ struct BillingListView: View {
                         alertManager.showAlert(title: "提示", message: "确定要退出登录吗?") {
                             presentationMode.wrappedValue.dismiss()
                             SharedUsers.removeAll()
+                            UserStorage.clear()
                         }
                     }) {
                         Image(systemName: "arrow.left.to.line.square")
@@ -337,6 +270,79 @@ struct BillingListView: View {
                 )
             }
             .background(Color.white)
+            .overlay(
+                Group {
+                    if isMenuOpen {
+                        // 半透明遮罩
+                        Color.black.opacity(0.15)
+                            .ignoresSafeArea()
+                            .onTapGesture {
+                                isExpanded = false
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                                    isMenuOpen = false
+                                }
+                            }
+                        
+                        VStack(alignment: .leading, spacing: 0) {
+                            // 菜单列表
+                            VStack(alignment: .leading, spacing: 0) {
+                                ForEach(Array(DateFilter.allCases.enumerated()), id: \.element) { index, filter in
+                                    Button(action: {
+                                        selectedFilter = filter
+                                        isExpanded = false
+                                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                                            isMenuOpen = false
+                                        }
+                                        
+                                        performFilter(filter)
+                                    }) {
+                                        HStack {
+                                            Text(filter.rawValue)
+                                                .font(.system(size: 12))
+                                                .foregroundColor(.primary)
+                                            
+                                            Spacer()
+                                            
+                                            if filter == selectedFilter {
+                                                Image(systemName: "checkmark")
+                                                    .font(.system(size: 10))
+                                                    .foregroundColor(.blue)
+                                            }
+                                        }
+                                        .padding(.horizontal, 20)
+                                        .padding(.vertical, 12)
+                                        .frame(minWidth: 100)
+                                        .background(
+                                            filter == selectedFilter ?
+                                            Color.blue.opacity(0.1) :
+                                                Color.white
+                                        )
+                                    }
+                                    .buttonStyle(PlainButtonStyle())
+                                    
+                                    if index < DateFilter.allCases.count - 1 {
+                                        Divider()
+                                            .padding(.leading, 10)
+                                    }
+                                }
+                            }
+                            .background(Color.white)
+                            .cornerRadius(8)
+                            .shadow(color: Color.black.opacity(0.15), radius: 8, x: 0, y: 4)
+                            .frame(width: 120, alignment: .leading)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .frame(height: isExpanded ? 440 : 0, alignment: .top)
+                            .clipped()
+                            .animation(.easeInOut(duration: 0.15), value: isExpanded)
+                        
+                            Spacer()
+                        }
+                        .padding(.leading, 90)
+                        .padding(.top, 60)
+                    }
+                }
+            )
+
             .sheet(isPresented: $isStartDatePickerPresented) {
                 VStack {
                     DatePicker("选择开始时间", selection: $startDate, in: ...Date(), displayedComponents: .date)
@@ -492,6 +498,88 @@ struct BillingListView: View {
                 }
             }
         }
+    }
+    
+    func performFilter(_ filter: DateFilter) {
+        if filter == .custom {
+            if lastSelectedFilter == .all {
+                startDate = kInitialStartDate
+                endDateString = "至今"
+            } else if lastSelectedFilter == .today {
+                endDateString = "至今"
+            }
+            withAnimation(.easeInOut(duration: 0.25)) {
+                isCustomDatePickerPresented = true
+            }
+        } else {
+            // 计算时间区间
+            let now = Date()
+            var calendar = Calendar.current
+            calendar.firstWeekday = 2 // 强制一周从周一开始，其他国家可能是从周日开始
+            switch filter {
+            case .all:
+                startDateString = ""
+                endDateString = ""
+                startDate = Date()
+                endDate = Date()
+            case .today:
+                let start = calendar.startOfDay(for: now)
+                startDate = start
+                endDate = now
+            case .yesterday:
+                let yesterday = calendar.date(byAdding: .day, value: -1, to: now) ?? now
+                let start = calendar.startOfDay(for: yesterday)
+                let end = calendar.date(bySettingHour: 23, minute: 59, second: 59, of: yesterday) ?? yesterday
+                startDate = start
+                endDate = end
+            case .beforeYesterday:
+                let beforeYesterday = calendar.date(byAdding: .day, value: -2, to: now) ?? now
+                let start = calendar.startOfDay(for: beforeYesterday)
+                let end = calendar.date(bySettingHour: 23, minute: 59, second: 59, of: beforeYesterday) ?? beforeYesterday
+                startDate = start
+                endDate = end
+            case .thisWeek:
+                let weekStart = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: now)) ?? now
+                let weekEnd = calendar.date(byAdding: .day, value: 6, to: weekStart) ?? now
+                let endOfWeek = calendar.date(bySettingHour: 23, minute: 59, second: 59, of: weekEnd) ?? weekEnd
+                startDate = weekStart
+                endDate = endOfWeek
+            case .lastWeek:
+                let weekStart = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: now)) ?? now
+                let lastWeekStart = calendar.date(byAdding: .day, value: -7, to: weekStart) ?? weekStart
+                let lastWeekEnd = calendar.date(byAdding: .day, value: -1, to: weekStart) ?? weekStart
+                let endOfLastWeek = calendar.date(bySettingHour: 23, minute: 59, second: 59, of: lastWeekEnd) ?? lastWeekEnd
+                startDate = lastWeekStart
+                endDate = endOfLastWeek
+            case .thisMonth:
+                let comps = calendar.dateComponents([.year, .month], from: now)
+                let monthStart = calendar.date(from: comps) ?? now
+                startDate = monthStart
+                endDate = now
+            case .lastMonth:
+                let lastMonthDate = calendar.date(byAdding: .month, value: -1, to: now) ?? now
+                let lastMonthComps = calendar.dateComponents([.year, .month], from: lastMonthDate)
+                let lastMonthStart = calendar.date(from: lastMonthComps) ?? lastMonthDate
+                let range = calendar.range(of: .day, in: .month, for: lastMonthStart)
+                let lastDay = range?.count ?? 30
+                let lastMonthEnd = calendar.date(bySetting: .day, value: lastDay, of: lastMonthStart) ?? lastMonthStart
+                let endOfLastMonth = calendar.date(bySettingHour: 23, minute: 59, second: 59, of: lastMonthEnd) ?? lastMonthEnd
+                startDate = lastMonthStart
+                endDate = endOfLastMonth
+            case .halfYear:
+                let halfYearAgo = calendar.date(byAdding: .month, value: -6, to: now) ?? now
+                startDate = halfYearAgo
+                endDate = now
+            case .oneYear:
+                let oneYearAgo = calendar.date(byAdding: .year, value: -1, to: now) ?? now
+                startDate = oneYearAgo
+                endDate = now
+            default:
+                break
+            }
+            requestData()
+        }
+        lastSelectedFilter = filter
     }
 
     // 修改 getLicences、getStudies、updateStudies 支持进度回调
@@ -650,7 +738,7 @@ struct BillingOrgCard: View {
                     .foregroundColor(.text)
                 Text("\(org.balanceString)")
                     .font(.system(size: 11))
-                    .foregroundColor(org.balance < 0 ? .redText : .greenText)
+                    .foregroundColor(org.balanceColor)
             }
             .padding(.bottom, bottomMargin)
             

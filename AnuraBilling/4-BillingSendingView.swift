@@ -134,7 +134,7 @@ struct BillingSendingView: View {
                                                 Text(orgs[idx].totalDepositsString).font(.system(size: 8)).foregroundColor(.text).frame(width: 50, alignment: .leading)
                                                 Text(orgs[idx].periodCostString).font(.system(size: 8)).foregroundColor(.text).frame(width: 60, alignment: .leading)
                                                 Text(orgs[idx].totalCostString).font(.system(size: 8)).foregroundColor(.text).frame(width: 50, alignment: .leading)
-                                                Text(orgs[idx].balanceString).font(.system(size: 8)).foregroundColor(balanceColor(orgs[idx].balanceString)).frame(width: 45, alignment: .leading)
+                                                Text(orgs[idx].balanceString).font(.system(size: 8)).foregroundColor(orgs[idx].balanceColor).frame(width: 45, alignment: .leading)
                                                 Text(orgs[idx].unitPriceString).font(.system(size: 8)).foregroundColor(.text).frame(width: 45, alignment: .leading)
                                                 Text("\(orgs[idx].periodSuccess)").font(.system(size: 8)).foregroundColor(.text).frame(width: 80, alignment: .leading)
                                                 Text("\(orgs[idx].successCount)").font(.system(size: 8)).foregroundColor(.text).frame(width: 60, alignment: .leading)
@@ -351,13 +351,6 @@ struct BillingSendingView: View {
                     Button("关闭") { showMail = false }
                 }.padding()
             }
-        }
-    }
-    func balanceColor(_ balance: String) -> Color {
-        if let val = Double(balance), val < 0 {
-            return Color.red
-        } else {
-            return Color.green
         }
     }
     

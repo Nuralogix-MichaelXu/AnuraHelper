@@ -53,7 +53,7 @@ struct BillingDetailView: View {
                                     Image(systemName: "square.and.pencil")
                                         .resizable()
                                         .frame(width: 13, height: 13)
-                                        .foregroundColor(.lightBlue)
+                                        .foregroundColor(.deepPurple)
                                         .padding(.leading, 3)
                                         .padding(.top, -3)
                                         .onTapGesture {
@@ -72,7 +72,7 @@ struct BillingDetailView: View {
                                     Image(systemName: "square.and.pencil")
                                         .resizable()
                                         .frame(width: 13, height: 13)
-                                        .foregroundColor(.lightBlue)
+                                        .foregroundColor(.deepPurple)
                                         .padding(.leading, 3)
                                         .padding(.top, -3)
                                         .onTapGesture {
@@ -98,7 +98,7 @@ struct BillingDetailView: View {
                                         .foregroundColor(.text)
                                     Text(org.balanceString)
                                         .font(.system(size: 12))
-                                        .foregroundColor(org.balance < 0 ? .redText : .greenText)
+                                        .foregroundColor(org.balanceColor)
                                 }
                             }
                         }
@@ -109,10 +109,10 @@ struct BillingDetailView: View {
                         VStack(alignment: .leading, spacing: vSpace) {
                             Text("统计周期: \(period)")
                                 .font(.system(size: 12))
-                                .foregroundColor(.text)
+                                .foregroundColor(.lightBlue)
                             Text("周期内消费(元): \(org.periodCostString)")
                                 .font(.system(size: 12))
-                                .foregroundColor(.text)
+                                .foregroundColor(.lightBlue)
                         }
                         .padding(.top, vSpace)
                         .padding(.horizontal, 20)
@@ -146,23 +146,9 @@ struct BillingDetailView: View {
                                         .padding(.bottom, 4)
                                         .padding(.horizontal, 20)
                                         .background(Color.white)
-                                        ForEach(org.licenses.indices, id: \ .self) { idx in
-                                            let license = org.licenses[idx]
-                                            HStack(spacing: 0) {
-                                                Text(license.createdDateString).frame(width: 70, alignment: .leading)
-                                                Text(license.LicenseType).frame(width: 50, alignment: .leading)
-                                                Text(license.DeviceRegistrationString).frame(width: 75, alignment: .leading)
-                                                Text(license.statusString).frame(width: 50, alignment: .leading)
-                                                Text(license.expirationString).frame(width: 65, alignment: .leading)
-                                                Text(license.encryptedKey).frame(width: 60, alignment: .leading)
-                                            }
-                                            .font(.system(size: 8))
-                                            .foregroundColor(.text)
-                                            .padding(.vertical, 6)
-                                            .padding(.leading, 0)
-                                            .background(Color.white)
-                                            .lineLimit(1)
-                                            if idx != org.licenses.count - 1 {
+                                        ForEach(licenses.indices, id: \ .self) { idx in
+                                            LicenseRowView(license: licenses[idx])
+                                            if idx != licenses.count - 1 {
                                                 Divider()
                                                     .background(Color(UIColor.systemGray5))
                                                     .padding(.horizontal, 20)
@@ -204,69 +190,22 @@ struct BillingDetailView: View {
                                         .padding(.bottom, 4)
                                         .padding(.horizontal, 20)
                                         .background(Color.white)
-                                        ForEach(org.studies.indices, id: \ .self) { idx in
-                                            let study = org.studies[idx]
-                                            let study_period = org.periodStudies[idx]
-                                            let cost = org.unitPrice * Double(study.successMeasurements ?? 0)
-                                            let cost_period = org.unitPrice * Double(study_period.successMeasurements ?? 0)
-                                            HStack(spacing: 0) {
-                                                Text(study.createdDateString).frame(width: 70, alignment: .leading)
-                                                Text(study.Name).frame(width: 100, alignment: .leading)
-                                                Text(study.statusString).frame(width: 50, alignment: .leading)
-                                                Text("\(study_period.successMeasurements ?? 0)").frame(width: 70, alignment: .leading)
-                                                Text("\(study_period.failCount ?? 0)").frame(width: 70, alignment: .leading)
-                                                Text(formatAmount(cost_period)).frame(width: 60, alignment: .leading)
-                                                Text("\(study.successMeasurements ?? 0)").frame(width: 60, alignment: .leading)
-                                                Text("\(study.failCount ?? 0)").frame(width: 60, alignment: .leading)
-                                                Text(formatAmount(cost)).frame(width: 50, alignment: .leading)
-                                                Text(study.encryptedKey).frame(width: 60, alignment: .leading)
-                                            }
-                                            .font(.system(size: 8))
-                                            .foregroundColor(.text)
-                                            .padding(.vertical, 6)
-                                            .padding(.leading, 0)
-                                            .background(Color.white)
-                                            .lineLimit(1)
+                                        ForEach(studies.indices, id: \ .self) { idx in
+                                            let period = periodStudies.indices.contains(idx) ? periodStudies[idx] : studies[idx]
+                                            StudyRowView(study: studies[idx], period: period, unitPrice: org.unitPrice)
                                             Divider()
                                                 .background(Color(UIColor.systemGray5))
                                                 .padding(.horizontal, 20)
                                         }
-                                        
-                                        let totalPeriodSuccessCount = org.periodStudies.reduce(0) {
-                                            $0 + ( $1.successMeasurements ?? 0 )
-                                        }
-                                        let totalPeriodFailCount = org.periodStudies.reduce(0) {
-                                            $0 + ( $1.failCount ?? 0 )
-                                        }
-                                        let totalPeriodCost = org.periodStudies.reduce(0) {
-                                            $0 + org.unitPrice * Double($1.successMeasurements ?? 0)
-                                        }
-                                        let totalSuccessCount = org.studies.reduce(0) {
-                                            $0 + ( $1.successMeasurements ?? 0 )
-                                        }
-                                        let totalFailCount = org.studies.reduce(0) {
-                                            $0 + ( $1.failCount ?? 0 )
-                                        }
-                                        let totalCost = org.studies.reduce(0) {
-                                            $0 + org.unitPrice * Double($1.successMeasurements ?? 0)
-                                        }
-
-                                        // 统计行
-                                        HStack(spacing: 0) {
-                                            Text("总计(\(org.studies.count))").frame(width: 220, alignment: .leading)
-                                            Text("\(totalPeriodSuccessCount)").frame(width: 70, alignment: .leading)
-                                            Text("\(totalPeriodFailCount)").frame(width: 70, alignment: .leading)
-                                            Text(formatAmount(totalPeriodCost)).frame(width: 60, alignment: .leading)
-                                            Text("\(totalSuccessCount)").frame(width: 60, alignment: .leading)
-                                            Text("\(totalFailCount)").frame(width: 60, alignment: .leading)
-                                            Text(formatAmount(totalCost)).frame(width: 50, alignment: .leading)
-                                            Spacer()
-                                        }
-                                        .font(.system(size: 8, weight: .medium))
-                                        .foregroundColor(.text)
-                                        .padding(.vertical, 7)
-                                        .padding(.horizontal, 20)
-                                        .background(Color.white)
+                                        StudySummaryRowView(
+                                            count: studies.count,
+                                            totalPeriodSuccessCount: totalPeriodSuccessCount,
+                                            totalPeriodFailCount: totalPeriodFailCount,
+                                            totalPeriodCost: totalPeriodCost,
+                                            totalSuccessCount: totalSuccessCount,
+                                            totalFailCount: totalFailCount,
+                                            totalCost: totalCost
+                                        )
                                     }
                                 }
                             }
@@ -285,6 +224,13 @@ struct BillingDetailView: View {
             Button("确定") {
                 if let newValue = Double(tempDepositsValue) {
                     org.totalDeposits = newValue
+                    // 同步更新SharedUsers和UserStorage
+                    if let idx = SharedUsers.firstIndex(where: { $0.orgName == org.name }) {
+                        var user = SharedUsers[idx]
+                        user.deposits = newValue
+                        SharedUsers[idx] = user
+                        UserStorage.save(users: SharedUsers)
+                    }
                 }
             }
             Button("取消", role: .cancel) {}
@@ -295,10 +241,117 @@ struct BillingDetailView: View {
             Button("确定") {
                 if let newValue = Double(tempUnitPriceValue) {
                     org.unitPrice = newValue
+                    // 同步更新SharedUsers和UserStorage
+                    if let idx = SharedUsers.firstIndex(where: { $0.orgName == org.name }) {
+                        var user = SharedUsers[idx]
+                        user.unitPrice = newValue
+                        SharedUsers[idx] = user
+                        UserStorage.save(users: SharedUsers)
+                    }
                 }
             }
             Button("取消", role: .cancel) {}
         })
+    }
+}
+
+// MARK: - 子视图优化
+private struct LicenseRowView: View {
+    let license: LicenseResponse
+    var body: some View {
+        HStack(spacing: 0) {
+            Text(license.createdDateString).frame(width: 70, alignment: .leading)
+            Text(license.LicenseType).frame(width: 50, alignment: .leading)
+            Text(license.DeviceRegistrationString).frame(width: 75, alignment: .leading)
+            Text(license.statusString).frame(width: 50, alignment: .leading)
+            Text(license.expirationString).frame(width: 65, alignment: .leading)
+            Text(license.encryptedKey).frame(width: 60, alignment: .leading)
+        }
+        .font(.system(size: 8))
+        .foregroundColor(.text)
+        .padding(.vertical, 6)
+        .padding(.leading, 0)
+        .background(Color.white)
+        .lineLimit(1)
+    }
+}
+
+private struct StudyRowView: View {
+    let study: StudyResponse
+    let period: StudyResponse
+    let unitPrice: Double
+    var body: some View {
+        let cost = unitPrice * Double(study.successMeasurements ?? 0)
+        let cost_period = unitPrice * Double(period.successMeasurements ?? 0)
+        HStack(spacing: 0) {
+            Text(study.createdDateString).frame(width: 70, alignment: .leading)
+            Text(study.Name).frame(width: 100, alignment: .leading)
+            Text(study.statusString).frame(width: 50, alignment: .leading)
+            Text("\(period.successMeasurements ?? 0)").frame(width: 70, alignment: .leading)
+            Text("\(period.failCount ?? 0)").frame(width: 70, alignment: .leading)
+            Text(formatAmount(cost_period)).frame(width: 60, alignment: .leading)
+            Text("\(study.successMeasurements ?? 0)").frame(width: 60, alignment: .leading)
+            Text("\(study.failCount ?? 0)").frame(width: 60, alignment: .leading)
+            Text(formatAmount(cost)).frame(width: 50, alignment: .leading)
+            Text(study.encryptedKey).frame(width: 60, alignment: .leading)
+        }
+        .font(.system(size: 8))
+        .foregroundColor(.text)
+        .padding(.vertical, 6)
+        .padding(.leading, 0)
+        .background(Color.white)
+        .lineLimit(1)
+    }
+}
+
+private struct StudySummaryRowView: View {
+    let count: Int
+    let totalPeriodSuccessCount: Int
+    let totalPeriodFailCount: Int
+    let totalPeriodCost: Double
+    let totalSuccessCount: Int
+    let totalFailCount: Int
+    let totalCost: Double
+    var body: some View {
+        HStack(spacing: 0) {
+            Text("总计(\(count))").frame(width: 220, alignment: .leading)
+            Text("\(totalPeriodSuccessCount)").frame(width: 70, alignment: .leading)
+            Text("\(totalPeriodFailCount)").frame(width: 70, alignment: .leading)
+            Text(formatAmount(totalPeriodCost)).frame(width: 60, alignment: .leading)
+            Text("\(totalSuccessCount)").frame(width: 60, alignment: .leading)
+            Text("\(totalFailCount)").frame(width: 60, alignment: .leading)
+            Text(formatAmount(totalCost)).frame(width: 50, alignment: .leading)
+            Spacer()
+        }
+        .font(.system(size: 8, weight: .medium))
+        .foregroundColor(.text)
+        .padding(.vertical, 7)
+        .padding(.horizontal, 20)
+        .background(Color.white)
+    }
+}
+
+extension BillingDetailView {
+    private var studies: [StudyResponse] { org.studies }
+    private var periodStudies: [StudyResponse] { org.periodStudies }
+    private var licenses: [LicenseResponse] { org.licenses }
+    private var totalPeriodSuccessCount: Int {
+        periodStudies.reduce(0) { $0 + ($1.successMeasurements ?? 0) }
+    }
+    private var totalPeriodFailCount: Int {
+        periodStudies.reduce(0) { $0 + ($1.failCount ?? 0) }
+    }
+    private var totalPeriodCost: Double {
+        periodStudies.reduce(0) { $0 + org.unitPrice * Double($1.successMeasurements ?? 0) }
+    }
+    private var totalSuccessCount: Int {
+        studies.reduce(0) { $0 + ($1.successMeasurements ?? 0) }
+    }
+    private var totalFailCount: Int {
+        studies.reduce(0) { $0 + ($1.failCount ?? 0) }
+    }
+    private var totalCost: Double {
+        studies.reduce(0) { $0 + org.unitPrice * Double($1.successMeasurements ?? 0) }
     }
 }
 

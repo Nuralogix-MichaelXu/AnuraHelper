@@ -7,16 +7,36 @@
 
 import SwiftUI
 
-struct User: Sendable {
+struct User: Codable, Sendable {
     let orgName: String
     let email: String
     let password: String
-    let deposits: Double
-    let unitPrice: Double
+    var deposits: Double
+    var unitPrice: Double
     var token: String? = nil
 }
 
 var SharedUsers = [User]()
+
+// User 持久化工具
+struct UserStorage {
+    static let key = "userList"
+    static func save(users: [User]) {
+        if let data = try? JSONEncoder().encode(users) {
+            UserDefaults.standard.set(data, forKey: key)
+        }
+    }
+    static func load() -> [User] {
+        guard let data = UserDefaults.standard.data(forKey: key),
+              let users = try? JSONDecoder().decode([User].self, from: data) else {
+            return []
+        }
+        return users
+    }
+    static func clear() {
+        UserDefaults.standard.removeObject(forKey: key)
+    }
+}
 
 // 引入AlertManager
 struct LoginView: View {
@@ -32,6 +52,7 @@ struct LoginView: View {
     @State private var isBillingListActive = false
     @StateObject private var alertManager = AlertManager()
     @State private var isLoading = false // 新增 loading 状态
+    @State private var isFirstCheck = true // 防止多次跳转
     
     var body: some View {
         NavigationStack {
@@ -110,6 +131,17 @@ struct LoginView: View {
             .onTapGesture {
                 resignFirstResponder()
             }
+            .onAppear {
+                // 启动时自动跳转
+                if isFirstCheck {
+                    let users = UserStorage.load()
+                    if !users.isEmpty {
+                        SharedUsers = users
+                        isBillingListActive = true
+                    }
+                    isFirstCheck = false
+                }
+            }
         }
     }
     
@@ -161,7 +193,7 @@ struct LoginView: View {
                         do {
                             let response = try await APIClient.login(email: user.email, password: user.password, org: user.orgName)
                             tag += 1
-                            let updateUser = User(orgName: user.orgName + "\(tag)",
+                            let updateUser = User(orgName: user.orgName,
                                                   email: user.email,
                                                   password: user.password,
                                                   deposits: user.deposits,
@@ -193,6 +225,7 @@ struct LoginView: View {
             // 全部成功，主线程赋值
             await MainActor.run {
                 SharedUsers = updatedUsers
+                UserStorage.save(users: updatedUsers)
                 isBillingListActive = true
                 isLoading = false
             }
