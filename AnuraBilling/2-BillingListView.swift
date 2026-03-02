@@ -29,7 +29,17 @@ struct BillingListView: View {
     @State private var isRefreshing = false
     @State private var refreshCompleted = false // 新增状态
     @State private var totalRequests: Double = 0 // 总请求数
+    {
+        didSet {
+            print("\(completedRequests)" + "/" + "\(totalRequests)")
+        }
+    }
     @State private var completedRequests: Double = 0 // 已完成请求数
+    {
+        didSet {
+            print("\(completedRequests)" + "/" + "\(totalRequests)")
+        }
+    }
     @State private var progressTimer: Timer? = nil // 进度动画定时器
     @Environment(\.presentationMode) private var presentationMode
     @State private var startDateString: String = ""
@@ -654,7 +664,6 @@ struct BillingListView: View {
                     group.addTask {
                         do {
                             let info = try await APIClient.getMeasurementInfo(orgName: orgName, studyID: study.ID, date: dateStr, endDate: endDateStr, progress: progress)
-                            progress()
                             return (index, info.successCount, info.failCount)
                         } catch {
                             progress()
