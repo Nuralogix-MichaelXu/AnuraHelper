@@ -144,7 +144,8 @@ class APIClient {
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             request.httpBody = try? JSONSerialization.data(withJSONObject: params, options: [])
         }
-        print("API->: \(requestURL)")
+        
+        // print("API->: \(requestURL)")
 
         let task = URLSession.shared.dataTask(with: request) { data, response, error in
             if let error = error {

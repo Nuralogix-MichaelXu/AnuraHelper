@@ -1,6 +1,6 @@
 //
 //  BillingDetailView.swift
-//  AnuraBilling
+//  AnuraHelper
 //
 //  Created by Michael Xu on 2026/2/10.
 //

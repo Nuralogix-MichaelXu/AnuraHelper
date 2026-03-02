@@ -7,13 +7,13 @@
 	objects = {
 
 /* Begin PBXFileReference section */
-		4C15B1F22F386FC7006C9F99 /* AnuraBilling.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AnuraBilling.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		4C15B1F22F386FC7006C9F99 /* AnuraHelper.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AnuraHelper.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		4C15B1F42F386FC7006C9F99 /* AnuraBilling */ = {
+		4C15B1F42F386FC7006C9F99 /* AnuraHelper */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = AnuraBilling;
+			path = AnuraHelper;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -32,7 +32,7 @@
 		4C15B1E92F386FC7006C9F99 = {
 			isa = PBXGroup;
 			children = (
-				4C15B1F42F386FC7006C9F99 /* AnuraBilling */,
+				4C15B1F42F386FC7006C9F99 /* AnuraHelper */,
 				4C15B1F32F386FC7006C9F99 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -40,7 +40,7 @@
 		4C15B1F32F386FC7006C9F99 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				4C15B1F22F386FC7006C9F99 /* AnuraBilling.app */,
+				4C15B1F22F386FC7006C9F99 /* AnuraHelper.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -48,9 +48,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		4C15B1F12F386FC7006C9F99 /* AnuraBilling */ = {
+		4C15B1F12F386FC7006C9F99 /* AnuraHelper */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 4C15B1FD2F386FC8006C9F99 /* Build configuration list for PBXNativeTarget "AnuraBilling" */;
+			buildConfigurationList = 4C15B1FD2F386FC8006C9F99 /* Build configuration list for PBXNativeTarget "AnuraHelper" */;
 			buildPhases = (
 				4C15B1EE2F386FC7006C9F99 /* Sources */,
 				4C15B1EF2F386FC7006C9F99 /* Frameworks */,
@@ -61,13 +61,13 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				4C15B1F42F386FC7006C9F99 /* AnuraBilling */,
+				4C15B1F42F386FC7006C9F99 /* AnuraHelper */,
 			);
-			name = AnuraBilling;
+			name = AnuraHelper;
 			packageProductDependencies = (
 			);
 			productName = AnuraBilling;
-			productReference = 4C15B1F22F386FC7006C9F99 /* AnuraBilling.app */;
+			productReference = 4C15B1F22F386FC7006C9F99 /* AnuraHelper.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -85,7 +85,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 4C15B1ED2F386FC7006C9F99 /* Build configuration list for PBXProject "AnuraBilling" */;
+			buildConfigurationList = 4C15B1ED2F386FC7006C9F99 /* Build configuration list for PBXProject "AnuraHelper" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -99,7 +99,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				4C15B1F12F386FC7006C9F99 /* AnuraBilling */,
+				4C15B1F12F386FC7006C9F99 /* AnuraHelper */,
 			);
 		};
 /* End PBXProject section */
@@ -254,6 +254,7 @@
 				DEVELOPMENT_TEAM = 7NXBNMZ82B;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Anura Helper";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -287,6 +288,7 @@
 				DEVELOPMENT_TEAM = 7NXBNMZ82B;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Anura Helper";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -313,7 +315,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		4C15B1ED2F386FC7006C9F99 /* Build configuration list for PBXProject "AnuraBilling" */ = {
+		4C15B1ED2F386FC7006C9F99 /* Build configuration list for PBXProject "AnuraHelper" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				4C15B1FB2F386FC8006C9F99 /* Debug */,
@@ -322,7 +324,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		4C15B1FD2F386FC8006C9F99 /* Build configuration list for PBXNativeTarget "AnuraBilling" */ = {
+		4C15B1FD2F386FC8006C9F99 /* Build configuration list for PBXNativeTarget "AnuraHelper" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				4C15B1FE2F386FC8006C9F99 /* Debug */,
