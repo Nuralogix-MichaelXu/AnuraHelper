@@ -9,9 +9,9 @@ struct OrgInfo: Identifiable {
     var unitPrice: Double
     let periodSuccess: Int
     let licenses: [LicenseResponse]
-    let studies: [StudyResponse]
-    let periodStudies: [StudyResponse]
-
+    var studies: [StudyResponse]
+    var periodStudies: [StudyResponse]
+    
     var licenseCount: Int {
         return licenses.count
     }
@@ -28,17 +28,17 @@ struct OrgInfo: Identifiable {
     }
     
     var totalCost: Double {
-        return Double(successCount) * unitPrice
+        return studies.reduce(0) { $0 + ($1.unitPrice ?? unitPrice) * Double($1.successMeasurements ?? 0) }
     }
     
     var periodCost: Double {
-        return Double(periodSuccess) * unitPrice
+        return periodStudies.reduce(0) { $0 + ($1.unitPrice ?? unitPrice) * Double($1.successMeasurements ?? 0) }
     }
     
     var totalCostString: String {
         return formatAmount(totalCost)
     }
-
+    
     var balanceString: String {
         return formatAmount(balance)
     }
@@ -50,17 +50,31 @@ struct OrgInfo: Identifiable {
             return Color.text
         }
     }
-
+    
     var periodCostString: String {
         return formatAmount(periodCost)
     }
-
+    
     var unitPriceString: String {
-        return formatUnitPrice(unitPrice)
+        let prices = studies.compactMap { $0.unitPrice ?? unitPrice }
+        let uniquePrices = Array(Set(prices)).sorted()
+        if uniquePrices.count <= 1 {
+            return formatUnitPrice(uniquePrices.first ?? unitPrice)
+        }
+        return uniquePrices.prefix(5).map { formatUnitPrice($0) }.joined(separator: "/")
     }
     
     var leftSuccessCount: Int {
         return max(Int(balance / unitPrice), 0)
+    }
+    
+    mutating func resetStudyUnitPrice() {
+        for i in studies.indices {
+            studies[i].unitPrice = nil
+        }
+        for i in periodStudies.indices {
+            periodStudies[i].unitPrice = nil
+        }
     }
 }
 
@@ -98,22 +112,19 @@ struct LicenseResponse: Codable {
     var statusString: String {
         switch StatusID {
         case "ACTIVE":
-             return "生效中"
+             return Localized("license_status_active")
         case "EXPIRED":
-            return "已过期"
+            return Localized("license_status_expired")
         default:
-            return "已失效"
+            return Localized("license_status_invalid")
         }
     }
-    
     var DeviceRegistrationString: String {
-        return "\(DeviceRegistrations)" + "/" + (MaxDevices == nil ? "无限使用" : "\(MaxDevices!)")
+        return "\(DeviceRegistrations)/" + (MaxDevices == nil ? Localized("unlimited_usage") : "\(MaxDevices!)")
     }
-    
     var createdDateString: String {
         return TimeInterval(Created).toDateString()
     }
-    
     func compareWithCurrentTime(_ dateString: String) -> String {
         // 创建日期格式化器
         let formatter = ISO8601DateFormatter()
@@ -131,15 +142,28 @@ struct LicenseResponse: Codable {
         let components = calendar.dateComponents([.day], from: currentDate, to: targetDate)
         let daysDifference = components.day ?? 0
         
-        if daysDifference < 0 {
-            // 已过期
-            return "已过期\(abs(daysDifference))天"
-        } else if daysDifference > 0 {
-            // 还未过期
-            return "剩余\(daysDifference)天"
+        if LanguageManager.shared.isCNLanguage() {
+            if daysDifference < 0 {
+                // 已过期
+                return Localized("expired_days") + "\(abs(daysDifference))" + Localized("days_unit")
+            } else if daysDifference > 0 {
+                // 还未过期
+                return Localized("remaining_days") + "\(daysDifference)" + Localized("days_unit")
+            } else {
+                // 同一天
+                return Localized("remaining_days") + "0" + Localized("days_unit")
+            }
         } else {
-            // 同一天
-            return "剩余0天"
+            if daysDifference < 0 {
+                // 已过期
+                return "\(abs(daysDifference))" + " " + Localized("days_unit") + " " + Localized("expired_days")
+            } else if daysDifference > 0 {
+                // 还未过期
+                return "\(abs(daysDifference))" + " " + Localized("days_unit") + " " + Localized("remaining_days")
+            } else {
+                // 同一天
+                return "0" + " " + Localized("days_unit") + " " + Localized("remaining_days")
+            }
         }
     }
 }
@@ -154,18 +178,19 @@ struct StudyResponse: Codable {
     var TotalCount: Int?
     var successMeasurements: Int?
     var failCount: Int?
-    
+    var unitPrice: Double?
+
     var statusString: String {
         switch StatusID {
         case "ACTIVE":
-             return "有效"
+             return Localized("study_status_active")
         case "DELETED":
-            return "已删除"
+            return Localized("study_status_deleted")
         default:
-            return "已失效"
+            return Localized("study_status_invalid")
         }
     }
-    
+        
     var createdDateString: String {
         return TimeInterval(Created).toDateString()
     }

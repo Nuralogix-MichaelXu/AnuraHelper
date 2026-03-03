@@ -281,7 +281,10 @@ extension TimeInterval {
 
 extension Date {
     var yyyyMMddDateString: String {
-        return dateFormatter("yyyy.MM.dd").string(from: self)
+        if LanguageManager.shared.isCNLanguage() {
+            return dateFormatter("yyyy.MM.dd").string(from: self)
+        }
+        return dateFormatter("MM/dd/yyyy").string(from: self)
     }
     
     var yyyyMMddhhmmssDateString: String {

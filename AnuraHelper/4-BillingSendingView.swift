@@ -57,39 +57,18 @@ struct BillingSendingView: View {
         NavigationStack{
             ZStack {
                 VStack(spacing: 0) {
-                    // 顶部返回按钮
-                    HStack {
-                        Button(action: { presentationMode.wrappedValue.dismiss() }) {
-                            Image(systemName: "chevron.backward")
-                                .font(.system(size: 20, weight: .medium))
-                                .foregroundColor(.gray)
-                        }
-                        Spacer()
-                    }
-                    .padding(.top, 20)
-                    .padding(.leading, 20)
-                    
                     // 标题
-                    HStack {
-                        Spacer()
-                        HStack(spacing: 8) {
-                            Image(systemName: "text.document")
-                                .font(.system(size: 18))
-                                .foregroundColor(.text)
-                            
-                            Text("邮件设置")
-                                .font(.system(size: 18, weight: .bold))
-                                .foregroundColor(.text)
-                        }
-                        Spacer()
-                    }
-                    .padding(.top, 30)
+                    Text(Localized("mail_settings_title"))
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundColor(.text)
+                        .padding(.top, 30)
+                        .frame(maxWidth: .infinity, alignment: .center)
                     
                     ZStack(alignment: .topTrailing) {
                         // 账单信息卡片
                         VStack(alignment: .leading, spacing: 16) {
                             HStack(spacing: 5) {
-                                Text("账单名称: ")
+                                Text(Localized("bill_name_label"))
                                     .font(.system(size: 12))
                                     .foregroundColor(.text)
                                 
@@ -99,7 +78,7 @@ struct BillingSendingView: View {
                             }
                             
                             HStack(spacing: 5) {
-                                Text("账单周期: ")
+                                Text(Localized("bill_period_label"))
                                     .font(.system(size: 12))
                                     .foregroundColor(.text)
                                 
@@ -113,15 +92,15 @@ struct BillingSendingView: View {
                                 VStack(alignment: .leading, spacing: 0) {
                                     // 表头
                                     HStack {
-                                        Text("组织名称").font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: 50, alignment: .leading)
-                                        Text("已充值(元)").font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: 50, alignment: .leading)
-                                        Text("周期内消费(元)").font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: 60, alignment: .leading)
-                                        Text("总消费(元)").font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: 50, alignment: .leading)
-                                        Text("余额(元)").font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: 45, alignment: .leading)
-                                        Text("单价(元)").font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: 45, alignment: .leading)
-                                        Text("周期内测量成功(次)").font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: 80, alignment: .leading)
-                                        Text("总测量成功(次)").font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: 60, alignment: .leading)
-                                        Text("剩余测量成功(次)").font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: 70, alignment: .leading)
+                                        Text(Localized("org_name_label")).font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: 60, alignment: .leading)
+                                        Text(Localized("total_deposits_label")).font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: 50, alignment: .leading)
+                                        Text(Localized("period_cost_label")).font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: 60, alignment: .leading)
+                                        Text(Localized("total_cost_label")).font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: 50, alignment: .leading)
+                                        Text(Localized("balance_label")).font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: AutoSize(45, 55), alignment: .leading)
+                                        Text(Localized("unit_price_label")).font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: 65, alignment: .leading)
+                                        Text(Localized("period_success_label")).font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: AutoSize(80, 60), alignment: .leading)
+                                        Text(Localized("success_count_label")).font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: 60, alignment: .leading)
+                                        Text(Localized("left_success_count_label")).font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: AutoSize(70, 60), alignment: .leading)
                                     }
                                     .padding(.vertical, 8)
                                     
@@ -130,15 +109,15 @@ struct BillingSendingView: View {
                                     VStack(alignment: .leading, spacing: 0) {
                                         ForEach(orgs.indices, id: \ .self) { idx in
                                             HStack(alignment: .top) {
-                                                Text(orgs[idx].name).font(.system(size: 8)).foregroundColor(.text).frame(width: 50, alignment: .leading)
+                                                Text(orgs[idx].name).font(.system(size: 8)).foregroundColor(.text).frame(width: 60, alignment: .leading)
                                                 Text(orgs[idx].totalDepositsString).font(.system(size: 8)).foregroundColor(.text).frame(width: 50, alignment: .leading)
                                                 Text(orgs[idx].periodCostString).font(.system(size: 8)).foregroundColor(.text).frame(width: 60, alignment: .leading)
                                                 Text(orgs[idx].totalCostString).font(.system(size: 8)).foregroundColor(.text).frame(width: 50, alignment: .leading)
-                                                Text(orgs[idx].balanceString).font(.system(size: 8)).foregroundColor(orgs[idx].balanceColor).frame(width: 45, alignment: .leading)
-                                                Text(orgs[idx].unitPriceString).font(.system(size: 8)).foregroundColor(.text).frame(width: 45, alignment: .leading)
-                                                Text("\(orgs[idx].periodSuccess)").font(.system(size: 8)).foregroundColor(.text).frame(width: 80, alignment: .leading)
+                                                Text(orgs[idx].balanceString).font(.system(size: 8)).foregroundColor(orgs[idx].balanceColor).frame(width: AutoSize(45, 55), alignment: .leading)
+                                                Text(orgs[idx].unitPriceString).font(.system(size: 8)).foregroundColor(.text).frame(width: 65, alignment: .leading)
+                                                Text("\(orgs[idx].periodSuccess)").font(.system(size: 8)).foregroundColor(.text).frame(width: AutoSize(80, 60), alignment: .leading)
                                                 Text("\(orgs[idx].successCount)").font(.system(size: 8)).foregroundColor(.text).frame(width: 60, alignment: .leading)
-                                                Text("\(orgs[idx].leftSuccessCount)").font(.system(size: 8)).foregroundColor(.text).frame(width: 70, alignment: .leading)
+                                                Text("\(orgs[idx].leftSuccessCount)").font(.system(size: 8)).foregroundColor(.text).frame(width: AutoSize(70, 60), alignment: .leading)
                                             }
                                             .padding(.vertical, 8)
                                             if idx != orgs.count - 1 {
@@ -178,7 +157,7 @@ struct BillingSendingView: View {
                                 .foregroundColor(.main)
                         }
                         .buttonStyle(PlainButtonStyle())
-                        .padding(.top, 205)
+                        .padding(.top, 205 + (LanguageManager.shared.isCNLanguage() ? 0 : 10))
                     }
                     .padding(.top, 50)
                     .padding(.horizontal, 10)
@@ -188,14 +167,14 @@ struct BillingSendingView: View {
                     // 邮箱和内容输入区
                     VStack(alignment: .leading, spacing: 24) {
                         HStack {
-                            Text("发送至邮箱")
+                            Text(Localized("send_to_email_label"))
                                 .font(.system(size: 14))
                                 .foregroundColor(.text)
                                 .frame(width: 80, alignment: .trailing)
                             Spacer(minLength: 10)
                             ZStack(alignment: .leading) {
                                 if emailInfo.toEmail.isEmpty {
-                                    Text(AttributedString("example@gmail.com"))
+                                    Text(Localized("send_to_email_placeholder"))
                                         .font(.system(size: 14))
                                         .foregroundColor(Color(UIColor.systemGray5))
                                         .padding(.horizontal, 10)
@@ -216,7 +195,7 @@ struct BillingSendingView: View {
                         }
                         
                         HStack(alignment: .top, spacing: 10) {
-                            Text("邮件内容")
+                            Text(Localized("mail_content_label"))
                                 .font(.system(size: 14))
                                 .foregroundColor(.text)
                                 .frame(width: 80, alignment: .trailing)
@@ -241,7 +220,7 @@ struct BillingSendingView: View {
                     // 发送账单按钮
                     Button(action: {
                         if !isValidEmail(emailInfo.toEmail) {
-                            toastMessage = "邮箱格式不正确"
+                            toastMessage = Localized("invalid_email_format")
                             withAnimation { showToast = true }
                             DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
                                 withAnimation { showToast = false }
@@ -260,7 +239,7 @@ struct BillingSendingView: View {
                         emailInfo.title = orgList.billingName
                         showMail = true
                     }) {
-                        Text("发送账单")
+                        Text(Localized("send_bill_button"))
                             .font(.system(size: 13, weight: .medium))
                             .foregroundColor(.white)
                             .frame(width: 140, height: 40)
@@ -284,13 +263,13 @@ struct BillingSendingView: View {
                     let accumulatedPeriodCost = formatAmount(orgs.reduce(0) { $0 + $1.periodCost })
                     
                     content = """
-                        · 组织数：\(orgs.count)个
-                        · 余额不足的组织数：\(insufficientOrgsCount)个
-                        · 累计测量成功次数：\(accumulatedSuccess)次
-                        · 累计充值：\(accumulatedDeposits)元
-                        · 累计消费：\(accumulatedCost)元
-                        · 周期内测量成功次数：\(accumulatedPeriodSuccess)元
-                        · 周期内消费：\(accumulatedPeriodCost)元
+                        · \(Localized("org_count_label"))：\(orgs.count)
+                        · \(Localized("insufficient_org_count_label"))：\(insufficientOrgsCount)
+                        · \(Localized("accumulated_success_label"))：\(accumulatedSuccess)
+                        · \(Localized("accumulated_deposits_label"))：\(accumulatedDeposits)
+                        · \(Localized("accumulated_cost_label"))：\(accumulatedCost)
+                        · \(Localized("accumulated_period_success_label"))：\(accumulatedPeriodSuccess)
+                        · \(Localized("accumulated_period_cost_label"))：\(accumulatedPeriodCost)
                         """
                 }
                 // Toast overlay
@@ -308,6 +287,7 @@ struct BillingSendingView: View {
                 resignFirstResponder()
             }
         }
+        .navigationBarHidden(false)
         .sheet(isPresented: $showMail) {
             if MFMailComposeViewController.canSendMail() {
                 MailView(
@@ -321,18 +301,18 @@ struct BillingSendingView: View {
                         case .success(let mailResult):
                             switch mailResult {
                             case .sent:
-                                toastMessage = "邮件发送成功"
+                                toastMessage = Localized("mail_sent_success")
                             case .saved:
-                                toastMessage = "邮件已保存草稿"
+                                toastMessage = Localized("mail_saved_draft")
                             case .cancelled:
-                                toastMessage = "邮件发送已取消"
+                                toastMessage = Localized("mail_send_cancelled")
                             case .failed:
-                                toastMessage = "邮件发送失败"
+                                toastMessage = Localized("mail_send_failed")
                             @unknown default:
-                                toastMessage = "邮件发送状态未知"
+                                toastMessage = Localized("mail_send_unknown")
                             }
                         case .failure(_):
-                            toastMessage = "邮件发送失败"
+                            toastMessage = Localized("mail_send_failed")
                         }
                         withAnimation {
                             showToast = true
@@ -347,8 +327,8 @@ struct BillingSendingView: View {
                 )
             } else {
                 VStack(spacing: 20) {
-                    Text("无法发送邮件，请检查设备邮箱设置")
-                    Button("关闭") { showMail = false }
+                    Text(Localized("mail_send_unavailable"))
+                    Button(Localized("close")) { showMail = false }
                 }.padding()
             }
         }
@@ -406,7 +386,7 @@ struct BillingPreview: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 5) {
-                Text("账单名称: ")
+                Text(Localized("bill_name_label"))
                     .font(.system(size: 12))
                     .foregroundColor(.text)
                 Text(billName)
@@ -414,7 +394,7 @@ struct BillingPreview: View {
                     .foregroundColor(.text)
             }
             HStack(spacing: 5) {
-                Text("账单周期: ")
+                Text(Localized("bill_period_label"))
                     .font(.system(size: 12))
                     .foregroundColor(.text)
                 Text(billPeriod)
@@ -424,26 +404,26 @@ struct BillingPreview: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 0) {
                     HStack {
-                        Text("组织名称").font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: 50, alignment: .leading)
-                        Text("已充值(元)").font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: 50, alignment: .leading)
-                        Text("周期内消费(元)").font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: 60, alignment: .leading)
-                        Text("总消费(元)").font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: 50, alignment: .leading)
-                        Text("余额(元)").font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: 45, alignment: .leading)
-                        Text("单价(元)").font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: 45, alignment: .leading)
-                        Text("周期内测量成功(次)").font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: 80, alignment: .leading)
-                        Text("总测量成功(次)").font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: 60, alignment: .leading)
-                        Text("剩余测量成功(次)").font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: 70, alignment: .leading)
+                        Text(Localized("org_name_label")).font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: 100, alignment: .leading)
+                        Text(Localized("total_deposits_label")).font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: 50, alignment: .leading)
+                        Text(Localized("period_cost_label")).font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: 60, alignment: .leading)
+                        Text(Localized("total_cost_label")).font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: 50, alignment: .leading)
+                        Text(Localized("balance_label")).font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: 45, alignment: .leading)
+                        Text(Localized("unit_price_label")).font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: 65, alignment: .leading)
+                        Text(Localized("period_success_label")).font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: 80, alignment: .leading)
+                        Text(Localized("success_count_label")).font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: 60, alignment: .leading)
+                        Text(Localized("left_success_count_label")).font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: 70, alignment: .leading)
                     }
                     .padding(.vertical, 8)
                     VStack(alignment: .leading, spacing: 0) {
                         ForEach(list.indices, id: \ .self) { idx in
                             HStack(alignment: .top) {
-                                Text(list[idx].name).font(.system(size: 8)).foregroundColor(.text).frame(width: 50, alignment: .leading)
+                                Text(list[idx].name).font(.system(size: 8)).foregroundColor(.text).frame(width: 100, alignment: .leading)
                                 Text(list[idx].totalDepositsString).font(.system(size: 8)).foregroundColor(.text).frame(width: 50, alignment: .leading)
                                 Text(list[idx].periodCostString).font(.system(size: 8)).foregroundColor(.text).frame(width: 60, alignment: .leading)
                                 Text(list[idx].totalCostString).font(.system(size: 8)).foregroundColor(.text).frame(width: 50, alignment: .leading)
                                 Text(list[idx].balanceString).font(.system(size: 8)).foregroundColor(.text).frame(width: 45, alignment: .leading)
-                                Text(list[idx].unitPriceString).font(.system(size: 8)).foregroundColor(.text).frame(width: 45, alignment: .leading)
+                                Text(list[idx].unitPriceString).font(.system(size: 8)).foregroundColor(.text).frame(width: 65, alignment: .leading)
                                 Text("\(list[idx].periodSuccess)").font(.system(size: 8)).foregroundColor(.text).frame(width: 80, alignment: .leading)
                                 Text("\(list[idx].successCount)").font(.system(size: 8)).foregroundColor(.text).frame(width: 60, alignment: .leading)
                                 Text("\(list[idx].leftSuccessCount)").font(.system(size: 8)).foregroundColor(.text).frame(width: 70, alignment: .leading)
@@ -486,5 +466,40 @@ extension View {
 }
 
 #Preview {
-    BillingSendingView(orgList: OrgListModel())
+    let orgs1: OrgListModel = {
+        var study1 = StudyResponse(Created: 123132323,
+                                  ID: "lkjghjajjsdjsjkd",
+                                  Name: "te22222st1",
+                                  Description: "test demo1",
+                                  StatusID: "ACTIVE",
+                                  Measurements: 10)
+        study1.unitPrice = 1.2
+        
+        var study2 = StudyResponse(Created: 123132323,
+                                  ID: "lkjghjajjsdjsjkd",
+                                  Name: "te22222st1",
+                                  Description: "test demo1",
+                                  StatusID: "ACTIVE",
+                                  Measurements: 10)
+        study2.unitPrice = 1.0
+
+
+        let orgs1 = OrgListModel()
+        let org = OrgInfo(
+            name: "123",
+            successCount: 20,
+            totalDeposits: 30,
+            unitPrice: 1,
+            periodSuccess: 10,
+            licenses: [],
+            studies:[
+                study1,
+                study2
+            ],
+            periodStudies: []
+        )
+        orgs1.orgs = [org, org]
+        return orgs1
+    }()
+    return BillingSendingView(orgList: orgs1)
 }

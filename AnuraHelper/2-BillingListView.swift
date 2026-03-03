@@ -1,5 +1,5 @@
 import SwiftUI
-import Combine // 修复 ObservableObject 错误
+import Combine
 
 class OrgListModel: ObservableObject {
     @Published var orgs: [OrgInfo] = []
@@ -9,17 +9,45 @@ class OrgListModel: ObservableObject {
 }
 
 enum DateFilter: String, CaseIterable {
-    case all = "全部"
-    case today = "今天"
-    case yesterday = "昨天"
-    case beforeYesterday = "前天"
-    case thisWeek = "本周"
-    case lastWeek = "上周"
-    case thisMonth = "本月"
-    case lastMonth = "上月"
-    case halfYear = "近半年"
-    case oneYear = "近一年"
-    case custom = "自定义"
+    case all = "all"
+    case today = "today"
+    case yesterday = "yesterday"
+    case beforeYesterday = "beforeYesterday"
+    case thisWeek = "thisWeek"
+    case lastWeek = "lastWeek"
+    case thisMonth = "thisMonth"
+    case lastMonth = "lastMonth"
+    case halfYear = "halfYear"
+    case oneYear = "oneYear"
+    case custom = "custom"
+    
+    var localized: String {
+        switch self {
+        case .all: return Localized("datefilter_all")
+        case .today: return Localized("datefilter_today")
+        case .yesterday: return Localized("datefilter_yesterday")
+        case .beforeYesterday: return Localized("datefilter_beforeYesterday")
+        case .thisWeek: return Localized("datefilter_thisWeek")
+        case .lastWeek: return Localized("datefilter_lastWeek")
+        case .thisMonth: return Localized("datefilter_thisMonth")
+        case .lastMonth: return Localized("datefilter_lastMonth")
+        case .halfYear: return Localized("datefilter_halfYear")
+        case .oneYear: return Localized("datefilter_oneYear")
+        case .custom: return Localized("datefilter_custom")
+        }
+    }
+    
+    var shortString: String {
+        if LanguageManager.shared.isCNLanguage() { return self.localized }
+        switch self {
+        case .beforeYesterday:
+            return "DBY"
+        case .halfYear:
+            return "LHY"
+        default:
+            return self.localized
+        }
+    }
 }
 
 struct BillingListView: View {
@@ -68,9 +96,7 @@ struct BillingListView: View {
                                         .resizable()
                                         .frame(width: 11, height: 11)
                                         .foregroundColor(Color.text)
-                                    Text("开始时间")
-                                        .font(.system(size: 11))
-                                        .foregroundColor(.text)
+                                    LocalizedText("start_time", font: .system(size: 11), color: .text)
                                         .frame(width: 60, alignment: .leading)
                                 }
 
@@ -96,9 +122,7 @@ struct BillingListView: View {
                                         .resizable()
                                         .frame(width: 11, height: 11)
                                         .foregroundColor(Color.text)
-                                    Text("截止时间")
-                                        .font(.system(size: 11))
-                                        .foregroundColor(.text)
+                                    LocalizedText("end_time", font: .system(size: 11), color: .text)
                                         .frame(width: 60, alignment: .leading)
                                 }
 
@@ -132,9 +156,7 @@ struct BillingListView: View {
                     } else {
                         VStack(alignment: .leading, spacing: 0) {
                             HStack {
-                                Text("周期选择:")
-                                    .font(.system(size: 14))
-                                    .foregroundColor(.text.opacity(0.75))
+                                LocalizedText("period_select", font: .system(size: 12), color: .text.opacity(0.75))
                                     .padding(.trailing, 5)
 
                                 // 自定义下拉菜单按钮
@@ -145,9 +167,10 @@ struct BillingListView: View {
                                     }
                                 }) {
                                     HStack {
-                                        Text(selectedFilter.rawValue)
+                                        Text(selectedFilter.shortString)
                                             .font(.system(size: 11, weight: .medium))
                                             .foregroundColor(.lightBlue)
+                                            .lineLimit(1)
                                         Image(systemName: "chevron.down")
                                             .font(.system(size: 12))
                                             .foregroundColor(.lightBlue)
@@ -168,10 +191,8 @@ struct BillingListView: View {
                     
                     Spacer()
                     
-                    NavigationLink(destination: BillingPreviewFullView(orgList: orgList).navigationBarHidden(true)) {
-                            Text("账单预览")
-                                .font(.system(size: 8))
-                                .foregroundColor(.white)
+                    NavigationLink(destination: BillingPreviewFullView(orgList: orgList)) {
+                            LocalizedText("bill_preview", font: .system(size: 9), color: .white)
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 8)
                                 .background(Color.deepPurple)
@@ -180,10 +201,8 @@ struct BillingListView: View {
                         .buttonStyle(PlainButtonStyle())
                         .disabled(orgList.orgs.isEmpty)
 
-                    NavigationLink(destination: BillingSendingView(orgList: orgList).navigationBarHidden(true)) {
-                        Text("发送账单")
-                            .font(.system(size: 8))
-                            .foregroundColor(.white)
+                    NavigationLink(destination: BillingSendingView(orgList: orgList)) {
+                        LocalizedText("send_bill", font: .system(size: 9), color: .white)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 8)
                             .background(Color.deepPurple)
@@ -241,7 +260,7 @@ struct BillingListView: View {
                 // 底部刷新按钮和返回按钮
                 HStack {
                     Button(action: {
-                        alertManager.showAlert(title: "提示", message: "确定要退出登录吗?") {
+                        alertManager.showAlert(title: Localized("alert_title"), message: Localized("alert_logout_confirm")) {
                             presentationMode.wrappedValue.dismiss()
                             SharedUsers.removeAll()
                             UserStorage.clear()
@@ -254,7 +273,7 @@ struct BillingListView: View {
                             .padding(20)
                     }
                     Spacer()
-                    let text = isRefreshing ? "数据更新中，请稍后..." : "上次更新时间: \(orgList.updateTime.yyyyMMddhhmmssDateString2)"
+                    let text = isRefreshing ? Localized("refreshing") : Localized("last_update_time") + orgList.updateTime.yyyyMMddhhmmssDateString2
                     Text(text)
                         .font(.system(size: 11))
                         .foregroundColor(.main)
@@ -297,7 +316,7 @@ struct BillingListView: View {
                                         performFilter(filter)
                                     }) {
                                         HStack {
-                                            Text(filter.rawValue)
+                                            Text(filter.localized)
                                                 .font(.system(size: 12))
                                                 .foregroundColor(.primary)
                                             
@@ -311,7 +330,7 @@ struct BillingListView: View {
                                         }
                                         .padding(.horizontal, 20)
                                         .padding(.vertical, 12)
-                                        .frame(minWidth: 100)
+                                        .frame(width: AutoSize(100, 190))
                                         .background(
                                             filter == selectedFilter ?
                                             Color.blue.opacity(0.1) :
@@ -329,7 +348,7 @@ struct BillingListView: View {
                             .background(Color.white)
                             .cornerRadius(8)
                             .shadow(color: Color.black.opacity(0.15), radius: 8, x: 0, y: 4)
-                            .frame(width: 120, alignment: .leading)
+                            .frame(width: AutoSize(100, 190), alignment: .leading)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .frame(height: isExpanded ? 440 : 0, alignment: .top)
                             .clipped()
@@ -337,7 +356,7 @@ struct BillingListView: View {
                         
                             Spacer()
                         }
-                        .padding(.leading, 90)
+                        .padding(.leading, AutoSize(90, 75))
                         .padding(.top, 60)
                     }
                 }
@@ -345,12 +364,12 @@ struct BillingListView: View {
 
             .sheet(isPresented: $isStartDatePickerPresented) {
                 VStack {
-                    DatePicker("选择开始时间", selection: $startDate, in: ...Date(), displayedComponents: .date)
+                    DatePicker(Localized("select_start_time"), selection: $startDate, in: ...Date(), displayedComponents: .date)
                         .datePickerStyle(.graphical)
                         .labelsHidden()
                         .environment(\.locale, Locale.preferredLanguages.first.map { Locale(identifier: $0) } ?? Locale.current)
                     HStack {
-                        Button("重置") {
+                        Button(Localized("reset")) {
                             startDate = kInitialStartDate
                             savedStartDate = nil
                             isStartDatePickerPresented = false
@@ -358,7 +377,7 @@ struct BillingListView: View {
                         }
                         .padding()
                         Spacer()
-                        Button("确定") {
+                        Button(Localized("confirm")) {
                             savedStartDate = startDate
                             startDateString = startDate.yyyyMMddDateString
                             isStartDatePickerPresented = false
@@ -373,12 +392,12 @@ struct BillingListView: View {
             }
             .sheet(isPresented: $isEndDatePickerPresented) {
                 VStack {
-                    DatePicker("选择截止时间", selection: $endDate, in: ...Date(), displayedComponents: .date)
+                    DatePicker(Localized("select_end_time"), selection: $endDate, in: ...Date(), displayedComponents: .date)
                         .datePickerStyle(.graphical)
                         .labelsHidden()
                         .environment(\.locale, Locale.preferredLanguages.first.map { Locale(identifier: $0) } ?? Locale.current)
                     HStack {
-                        Button("重置") {
+                        Button(Localized("reset")) {
                             endDate = Date()
                             savedEndDate = nil
                             endDateString = "至今"
@@ -387,7 +406,7 @@ struct BillingListView: View {
                         }
                         .padding()
                         Spacer()
-                        Button("确定") {
+                        Button(Localized("confirm")) {
                             savedEndDate = endDate
                             endDateString = endDate.yyyyMMddDateString
                             isEndDatePickerPresented = false
@@ -407,12 +426,13 @@ struct BillingListView: View {
                     primaryButton: .default(Text(alertManager.buttonText)) {
                         alertManager.onDismiss?()
                     },
-                    secondaryButton: .cancel(Text("取消")) {
+                    secondaryButton: .cancel(Text(Localized("cancel"))) {
                         alertManager.isPresented = false
                     }
                 )
             }
         }
+        .navigationBarHidden(true)
         .onAppear {
             if orgList.orgs.isEmpty && !isRefreshing {
                 requestData()
@@ -445,7 +465,19 @@ struct BillingListView: View {
 
         Task {
             do {
-                let studies = try await getStudies()
+                var studies = try await getStudies()
+                for orgName in studies.keys {
+                    var orgStudies = studies[orgName] ?? []
+                    if let user = SharedUsers.first(where: { $0.orgName == orgName }) {
+                        for idx in orgStudies.indices {
+                            if let unitPrice = user.studyUnitPrices?[orgStudies[idx].ID] {
+                                orgStudies[idx].unitPrice = unitPrice
+                            }
+                        }
+                    }
+                    studies[orgName] = orgStudies
+                }
+                
                 let studyCount = studies.values.flatMap { $0 }.count
                 let progress = completedRequests / totalRequests
                 totalRequests += Double(studyCount) * (selectedFilter == .all ? 3 : 6)
@@ -486,10 +518,10 @@ struct BillingListView: View {
                     if selectedFilter == .custom {
                         orgList.billingPeriod = "\(startDateString) ~ \(endDateString)"
                     } else {
-                        orgList.billingPeriod = selectedFilter.rawValue
+                        orgList.billingPeriod = selectedFilter.localized
                     }
                     orgList.updateTime = Date()
-                    orgList.billingName = "NuraLogix账单" + orgList.updateTime.yyyyMMddhhmmssDateString
+                    orgList.billingName = Localized("bill_prefix") + orgList.updateTime.yyyyMMddhhmmssDateString
                 }
             }catch {
                 print("getData error: \(error)")
@@ -581,7 +613,14 @@ struct BillingListView: View {
         }
         lastSelectedFilter = filter
     }
+}
 
+extension BillingListView {
+    func totalSuccessMeasurements(for user: User, in studies: [String: [StudyResponse]]) -> Int {
+        guard let studyArray = studies[user.orgName] else { return 0 }
+        return studyArray.compactMap { $0.successMeasurements }.reduce(0, +)
+    }
+    
     // 修改 getLicences、getStudies、updateStudies 支持进度回调
     func getLicences() async throws -> [String: [LicenseResponse]] {
         var licensesDic = [String: [LicenseResponse]]()
@@ -590,7 +629,7 @@ struct BillingListView: View {
             for user in SharedUsers {
                 group.addTask {
                     do {
-                        let licenses = try await APIClient.getLicences(orgName: user.orgName, limit: 3)
+                        let licenses = try await APIClient.getLicences(orgName: user.orgName, limit: 10)
                         return .success((user.orgName, licenses))
                     } catch {
                         return .failure(error)
@@ -619,7 +658,7 @@ struct BillingListView: View {
             for user in SharedUsers {
                 group.addTask {
                     do {
-                        let studies = try await APIClient.getStudies(orgName: user.orgName, limit: 5)
+                        let studies = try await APIClient.getStudies(orgName: user.orgName, limit: 20)
                         return .success((user.orgName, studies))
                     } catch {
                         return .failure(error)
@@ -675,182 +714,6 @@ struct BillingListView: View {
     }
 }
 
-extension BillingListView {
-    func totalSuccessMeasurements(for user: User, in studies: [String: [StudyResponse]]) -> Int {
-        guard let studyArray = studies[user.orgName] else { return 0 }
-        return studyArray.compactMap { $0.successMeasurements }.reduce(0, +)
-    }
-}
-
-struct BillingOrgCard: View {
-    let org: OrgInfo
-    var body: some View {
-        VStack(alignment: .leading) {
-            HStack(spacing: 0) {
-                Text("组织名称: ")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundColor(.text)
-                Text(org.name)
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundColor(.text)
-            }
-            .padding(.bottom, 15)
-            
-            let bottomMargin: CGFloat = 10
-            
-            HStack(spacing: 0) {
-                Text("许可证(个): \(org.licenseCount)")
-                    .font(.system(size: 11))
-                    .foregroundColor(.text)
-                
-                Spacer()
-                Text("研究(个): \(org.studyCount)")
-                    .font(.system(size: 11))
-                    .foregroundColor(.text)
-                
-                Spacer()
-                Text("测量成功(次): \(org.successCount)")
-                    .font(.system(size: 11))
-                    .foregroundColor(.text)
-            }
-            .padding(.bottom, bottomMargin)
-            
-            HStack(spacing: 0) {
-                Text("总充值(元): \(org.totalDepositsString)")
-                    .font(.system(size: 11))
-                    .foregroundColor(.text)
-                Spacer()
-                Text("单价(元/次): \(org.unitPriceString)")
-                    .font(.system(size: 11))
-                    .foregroundColor(.text)
-            }
-            .padding(.bottom, bottomMargin)
-            
-            
-            HStack(spacing: 0) {
-                Text("总消费(元): \(org.totalCostString)")
-                    .font(.system(size: 11))
-                    .foregroundColor(.text)
-                Spacer()
-                Text("余额(元): ")
-                    .font(.system(size: 11))
-                    .foregroundColor(.text)
-                Text("\(org.balanceString)")
-                    .font(.system(size: 11))
-                    .foregroundColor(org.balanceColor)
-            }
-            .padding(.bottom, bottomMargin)
-            
-            HStack(spacing: 0) {
-                Text("周期内测量成功(次): \(org.periodSuccess)")
-                    .font(.system(size: 11))
-                    .foregroundColor(.lightBlue)
-                Spacer()
-                Text("周期内消费(元): \(org.periodCostString)")
-                    .font(.system(size: 11))
-                    .foregroundColor(.lightBlue)
-            }
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 15)
-        .background(.lightPurple)
-        .cornerRadius(10)
-        .shadow(color: Color.gray.opacity(0.5), radius: 5, x: 5, y: 5)
-    }
-}
-
 #Preview {
     BillingListView()
-}
-
-// MARK: - 刷新按钮带三色分段旋转动画
-struct RefreshButton: View {
-    @Binding var isRefreshing: Bool
-    @Binding var refreshCompleted: Bool
-    var requestData: () -> Void
-    @State private var rotation: Double = 0
-    @State private var timer: Timer? = nil
-    
-    func startRotationAnimation() {
-        timer?.invalidate()
-        timer = Timer.scheduledTimer(withTimeInterval: 1.0/60.0, repeats: true) { _ in
-            rotation += 6
-            if rotation >= 360 { rotation -= 360 }
-        }
-    }
-    
-    var body: some View {
-        ZStack() {
-            // 三色分段圆环
-            ZStack {
-                RingSegment(startAngle: .degrees(0), endAngle: .degrees(110))
-                    .stroke(Color.deepPurple, lineWidth: 3)
-                RingSegment(startAngle: .degrees(120), endAngle: .degrees(230))
-                    .stroke(Color.deepPurple, lineWidth: 3)
-                RingSegment(startAngle: .degrees(240), endAngle: .degrees(350))
-                    .stroke(Color.deepPurple, lineWidth: 3)
-            }
-            .frame(width: 40, height: 40)
-            .rotationEffect(.degrees(rotation))
-            .opacity(0.7)
-            // 刷新按钮
-            Button(action: {
-                if isRefreshing { return }
-                startRotationAnimation()
-                requestData()
-            }) {
-                Text(isRefreshing ? "加载中" : "刷新")
-                    .font(.system(size: 8, weight: .medium))
-                    .foregroundColor(.white)
-                    .frame(width: 35, height: 35)
-                    .background(.deepPurple)
-                    .clipShape(Circle())
-                    .shadow(color: .gray.opacity(0.6), radius: 5, x: 5, y: 5)
-            }
-        }
-        .padding(.trailing, 20)
-        .onChange(of: isRefreshing) { refreshing in
-            if refreshing {
-                startRotationAnimation()
-            } else {
-                timer?.invalidate()
-                timer = nil
-            }
-        }
-        .onChange(of: refreshCompleted) { completed in
-            if completed && isRefreshing {
-                timer?.invalidate()
-                timer = nil
-                withAnimation(.easeInOut(duration: 0.25)) {
-                    isRefreshing = false
-                }
-            }
-        }
-        .onDisappear {
-            timer?.invalidate()
-            timer = nil
-        }
-        .onAppear {
-            if isRefreshing {
-                startRotationAnimation()
-            }
-        }
-    }
-}
-
-// MARK: - 圆环分段 Shape
-struct RingSegment: Shape {
-    var startAngle: Angle
-    var endAngle: Angle
-    func path(in rect: CGRect) -> Path {
-        let radius = min(rect.width, rect.height) / 2
-        let center = CGPoint(x: rect.midX, y: rect.midY)
-        var path = Path()
-        path.addArc(center: center,
-                    radius: radius,
-                    startAngle: startAngle - .degrees(90),
-                    endAngle: endAngle - .degrees(90),
-                    clockwise: false)
-        return path
-    }
 }

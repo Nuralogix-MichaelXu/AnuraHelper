@@ -13,6 +13,7 @@ struct User: Codable, Sendable {
     let password: String
     var deposits: Double
     var unitPrice: Double
+    var studyUnitPrices: [String: Double]? = nil
     var token: String? = nil
 }
 
@@ -40,17 +41,23 @@ struct UserStorage {
 
 // 引入AlertManager
 struct LoginView: View {
-    @State private var orgName: String = "support"
-    @State private var email: String = "michaelxu@nuralogix.ai"
-    @State private var password: String = "Xq1988050414132024!"
-    @State private var isMultiAccountMode: Bool = false
-    @State private var multiAccountText: String = """
-        support michaelxu@nuralogix.ai Xq1988050414132024! 200000 0.8
-        support michaelxu@nuralogix.ai Xq1988050414132024! 5000 1.2
-        support michaelxu@nuralogix.ai Xq1988050414132024! 5000 1.2
-        """
+//    @State private var orgName: String = "support"
+//    @State private var email: String = "michaelxu@nuralogix.ai"
+//    @State private var password: String = "Xq1988050414132024!"
+//    @State private var multiAccountText: String = """
+//        support michaelxu@nuralogix.ai Xq1988050414132024! 20000 0.8
+//        support michaelxu@nuralogix.ai Xq1988050414132024! 5000 1.2
+//        support michaelxu@nuralogix.ai Xq1988050414132024! 3000 1.2
+//        """
+    @State private var orgName: String = ""
+    @State private var email: String = ""
+    @State private var password: String = ""
+    @State private var multiAccountText: String = ""
+
+    @State private var isMultiAccountMode: Bool = true
     @State private var isBillingListActive = false
     @StateObject private var alertManager = AlertManager()
+    @ObservedObject private var langManager = LanguageManager.shared // 新增，监听语言变化
     @State private var isLoading = false // 新增 loading 状态
     @State private var isFirstCheck = true // 防止多次跳转
     
@@ -60,9 +67,7 @@ struct LoginView: View {
                 Color.white.ignoresSafeArea()
                 VStack(alignment: .center, spacing: 0) {
                     // 标题
-                    Text("请登录")
-                        .font(.system(size: 20, weight: .medium))
-                        .foregroundColor(.text)
+                    LocalizedText("login_title", font: .system(size: 20, weight: .medium), color: .text)
                         .padding(.top, 80)
                         .padding(.bottom, 60)
                     
@@ -81,9 +86,7 @@ struct LoginView: View {
                         Button(action: {
                             isMultiAccountMode.toggle()
                         }) {
-                            Text(isMultiAccountMode ? "普通登录" : "多账号登录")
-                                .font(.system(size: 14, weight: .medium))
-                                .foregroundColor(.lightBlue)
+                            LocalizedText(isMultiAccountMode ? "login_mode_normal" : "login_mode_multi", font: .system(size: 14, weight: .medium), color: .lightBlue)
                         }
                     }
                     .padding(.horizontal, 30)
@@ -94,18 +97,15 @@ struct LoginView: View {
                     LoginButton(isLoading: isLoading) {
                         UIApplication.shared.resignFirstResponder()
                         isLoading = true
-//                        DispatchQueue.main.asyncAfter(deadline: .now() + 20.0) {
-//                            isBillingListActive = true
-//                            isLoading = false
-//                        }
                         Task {
                             await login()
                         }
                     }
                     
                     // 底部说明文字
-                    BottomNote(text: "· 请使用NuraLogix提供的管理员账号登录 ·")
+                    BottomNote(text: Localized("login_note"))
                         .padding(.top, 20)
+                        .frame(width: 250)
                     
                     Spacer()
 
@@ -142,7 +142,14 @@ struct LoginView: View {
                     isFirstCheck = false
                 }
             }
+            // 右上角语言切换按钮
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    LanguageSwitchButton()
+                }
+            }
         }
+        .id(langManager.currentLanguage) // 关键：语言变化时刷新整个视图
     }
     
     func resignFirstResponder() {
@@ -152,7 +159,7 @@ struct LoginView: View {
     func login() async {
         if (isMultiAccountMode && multiAccountText.isEmpty) ||
         (!isMultiAccountMode && (orgName.isEmpty || email.isEmpty || password.isEmpty)){
-            alertManager.showAlert(title: "提示", message: "请填写完整信息")
+            alertManager.showAlert(title: NSLocalizedString("alert_title", comment: "提示"), message: NSLocalizedString("alert_fill_all", comment: "请填写完整信息"))
             isLoading = false
             return
         }
@@ -161,7 +168,7 @@ struct LoginView: View {
             let user = User(orgName: orgName,
                             email: email,
                             password: password,
-                            deposits: 999999,
+                            deposits: 99999,
                             unitPrice: 1.0)
             users.append(user)
         } else {
@@ -217,7 +224,7 @@ struct LoginView: View {
             let failed = loginResults.first(where: { if case .failure(_) = $0 { return true } else { return false } })
             if let fail = failed {
                 if case .failure(let error) = fail {
-                    alertManager.showAlert(title: "登录失败", message: error.localizedDescription)
+                    alertManager.showAlert(title: NSLocalizedString("login_failed", comment: "登录失败"), message: error.localizedDescription)
                     isLoading = false
                     return
                 }
@@ -244,10 +251,8 @@ struct LoginInputArea: View {
     var body: some View {
         if isMultiAccountMode {
             VStack(alignment: .leading) {
-                Text("请按标准格式输入账号相关信息：")
-                    .font(.system(size: 15, weight: .regular))
-                    .foregroundColor(.text)
-                    .frame(height: 20)
+                LocalizedText("login_multi_input_tip", font: .system(size: 15, weight: .regular), color: .text)
+                    .lineLimit(2)
                 ZStack(alignment: .topLeading) {
                     ScrollView(.horizontal, showsIndicators: true) {
                         SingleLineTextEditor(text: $multiAccountText)
@@ -262,9 +267,9 @@ struct LoginInputArea: View {
                     )
                     // 仅当multiAccountText为空时显示示例说明
                     if multiAccountText.isEmpty {
-                        let exampleString = "格式如下，多账号请换行区分：\n组织名称 账号 密码 已充值金额 单价\n\n例如：\norg1 example1@gmail.com 123456 500000 0.8\norg2 example2@gmail.com 123456 200000 1.0\norg3 example3@gmail.com 123456 100000 1.2"
+                        let exampleString = Localized("login_multi_example")
                         Text(AttributedString(exampleString))
-                            .font(.system(size: 12))
+                            .font(.system(size:10))
                             .foregroundColor(Color(UIColor.systemGray5))
                             .padding(15)
                             .allowsHitTesting(false)
@@ -275,11 +280,11 @@ struct LoginInputArea: View {
             .frame(height: 186)
         } else {
             VStack() {
-                InputField(label: "组织名称", placeholder: "org", text: $orgName)
+                InputField(label: Localized("org_label"), placeholder: "org", text: $orgName)
                 Spacer()
-                InputField(label: "电子邮箱", placeholder: "example@gmail.com", text: $email)
+                InputField(label: Localized("email_label"), placeholder: "example@gmail.com", text: $email)
                 Spacer()
-                InputField(label: "密码", placeholder: "123456", text: $password, isSecure: true)
+                InputField(label: Localized("password_label"), placeholder: "123456", text: $password, isSecure: true)
             }
             .padding(.horizontal, 30)
             .frame(height: 186)
@@ -301,7 +306,7 @@ struct InputField: View {
             Text(label)
                 .font(.system(size: 15))
                 .foregroundColor(.text)
-                .frame(width: 60, alignment: .trailing)
+                .frame(width: AutoSize(60, 90), alignment: .trailing)
             Spacer(minLength: 10)
             ZStack(alignment: .leading) {
                 if text.isEmpty {
@@ -352,9 +357,7 @@ struct LoginButton: View {
     var body: some View {
         Button(action: action) {
             ZStack(alignment: .center) {
-                Text(isLoading ? "登录中" : "登录")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(.white)
+                LocalizedText(isLoading ? "login_loading" : "login_button", font: .system(size: 13, weight: .medium), color: .white)
                     .frame(maxWidth: .infinity)
                 if isLoading {
                     HStack {
@@ -380,10 +383,7 @@ struct LoginButton: View {
 struct BottomNote: View {
     var text: String
     var body: some View {
-        Text(text)
-            .font(.system(size: 12))
-            .foregroundColor(.main)
-            .frame(maxWidth: .infinity, alignment: .center)
+        LocalizedText(text, font: .system(size: 12), color: .main, alignment: .center)
     }
 }
 
@@ -427,6 +427,36 @@ struct SingleLineTextEditor: UIViewRepresentable {
         init(_ parent: SingleLineTextEditor) { self.parent = parent }
         func textViewDidChange(_ textView: UITextView) {
             parent.text = textView.text
+        }
+    }
+}
+
+// 新增语言切换下拉菜单组件
+struct LanguageSwitchButton: View {
+    @ObservedObject private var langManager = LanguageManager.shared
+    @State private var showSheet = false
+    let languages = ["zh-Hans": "中文", "en": "Eglish"]
+    var body: some View {
+        Button(action: { showSheet = true }) {
+            Text(languages[langManager.currentLanguage] ?? "语言")
+                .font(.system(size: 12))
+        }
+        .sheet(isPresented: $showSheet) {
+            VStack(spacing: 24) {
+                ForEach(languages.keys.sorted(), id: \ .self) { key in
+                    Button(action: {
+                        langManager.setLanguage(key)
+                        showSheet = false
+                    }) {
+                        Text(languages[key] ?? key)
+                            .font(.system(size: 14))
+                            .foregroundColor(langManager.currentLanguage == key ? .blue : .primary)
+                            .frame(maxWidth: .infinity)
+                            .padding(10)
+                    }
+                }
+            }
+            .padding(10)
         }
     }
 }
