@@ -4,12 +4,16 @@
 "login_note" = "· 请使用NuraLogix提供的管理员账号登录 ·";
 "alert_title" = "提示";
 "alert_fill_all" = "请填写完整信息";
+"alert_fill_format" = "请按指定的格式输入账号信息";
 "login_failed" = "登录失败";
 "login_multi_input_tip" = "请按标准格式输入账号相关信息：";
-"login_multi_example" = "格式如下，多账号请换行区分：\n组织名称 账号 密码 已充值金额 单价\n\n例如：\norg1 example1@gmail.com 123456 500000 0.8\norg2 example2@gmail.com 123456 200000 1.0\norg3 example3@gmail.com 123456 100000 1.2";
+"login_multi_example" = "格式如下，多账号请换行区分：\n组织名称 账号 密码 已充值金额 单价 计费日期 域名(0:国内,1:海外)\n\n如：\norg1 example1@gmail.com 123456 500000 0.8 2020.01.01 0\norg2 example2@gmail.com 123456 200000 1.0 2022.01.01 0\norg3 example3@gmail.com 123456 100000 1.2 2025.05.04 1";
 "org_label" = "组织名称";
 "email_label" = "电子邮箱";
 "password_label" = "密码";
+"region_label" = "地区";
+"region_china" = "国内";
+"region_international" = "海外";
 "login_button" = "登录";
 "login_loading" = "登录中";
 "datefilter_all" = "全部";
@@ -52,6 +56,7 @@
 "refresh" = "刷新";
 "refreshing" = "数据更新中，请稍后...";
 "last_update_time" = "上次更新时间: ";
+"last_update_fail" = "更新失败: ";
 "alert_logout_confirm" = "确定要退出登录吗?";
 "license_table_title" = "许可证表";
 "created_date" = "创建日期";
@@ -109,3 +114,4 @@
 "study_status_active" = "有效";
 "study_status_deleted" = "已删除";
 "study_status_invalid" = "无效";
+"billing_date" = "计费开始日期";

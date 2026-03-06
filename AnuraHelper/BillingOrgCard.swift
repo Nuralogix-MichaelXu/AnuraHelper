@@ -29,7 +29,7 @@ struct BillingOrgCard: View {
             }
             .padding(.bottom, Style.bottomMargin + 5)
             HStack(spacing: 0) {
-                Text(Localized("license_count_label") + ": \(org.licenseCount)")
+                Text(Localized("region_label") + ": \(org.region.name)")
                     .font(Style.labelFont)
                     .foregroundColor(Style.labelColor)
                 Spacer()

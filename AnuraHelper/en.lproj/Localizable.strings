@@ -4,12 +4,16 @@
 "login_note" = "Please login with the administrator account provided by Nuralogix";
 "alert_title" = "Notice";
 "alert_fill_all" = "Please fill in all information";
+"alert_fill_format" = "Please enter your account information in the specified format";
 "login_failed" = "Login Failed";
 "login_multi_input_tip" = "Please enter the account-related information \nin the standard format:";
 "login_multi_example" = "Format is as follows, please break lines to distinguish multiple accounts:\nOrganization Email Password Deposits UnitPrice\n\nFor example:\norg1 example1@gmail.com 123456 500000 0.8\norg2 example2@gmail.com 123456 200000 1.0\norg3 example3@gmail.com 123456 100000 1.2";
 "org_label" = "Organization";
 "email_label" = "Email";
 "password_label" = "Password";
+"region_label" = "Region";
+"region_china" = "China";
+"region_international" = "Int.";
 "login_button" = "Login";
 "login_loading" = "Logging in";
 "datefilter_all" = "All";
@@ -52,6 +56,7 @@
 "refresh" = "Refresh";
 "refreshing" = "Updating data, please wait...";
 "last_update_time" = "Last update: ";
+"last_update_fail" = "Update fail: ";
 "alert_logout_confirm" = "Are you sure you want to log out?";
 "license_table_title" = "License";
 "created_date" = "Created Date";
@@ -108,3 +113,4 @@
 "study_status_active" = "Active";
 "study_status_deleted" = "Deleted";
 "study_status_invalid" = "Invalid";
+"billing_date" = "Billing Start Date";

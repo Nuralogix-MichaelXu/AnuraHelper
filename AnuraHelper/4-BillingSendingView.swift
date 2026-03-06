@@ -101,6 +101,7 @@ struct BillingSendingView: View {
                                         Text(Localized("period_success_label")).font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: AutoSize(80, 60), alignment: .leading)
                                         Text(Localized("success_count_label")).font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: 60, alignment: .leading)
                                         Text(Localized("left_success_count_label")).font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: AutoSize(70, 60), alignment: .leading)
+                                        Text(Localized("billing_date")).font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: 70, alignment: .leading)
                                     }
                                     .padding(.vertical, 8)
                                     
@@ -118,6 +119,7 @@ struct BillingSendingView: View {
                                                 Text("\(orgs[idx].periodSuccess)").font(.system(size: 8)).foregroundColor(.text).frame(width: AutoSize(80, 60), alignment: .leading)
                                                 Text("\(orgs[idx].successCount)").font(.system(size: 8)).foregroundColor(.text).frame(width: 60, alignment: .leading)
                                                 Text("\(orgs[idx].leftSuccessCount)").font(.system(size: 8)).foregroundColor(.text).frame(width: AutoSize(70, 60), alignment: .leading)
+                                                Text(orgs[idx].billingDate.yyyyMMddDateString).font(.system(size: 8)).foregroundColor(.text).frame(width: 70, alignment: .leading)
                                             }
                                             .padding(.vertical, 8)
                                             if idx != orgs.count - 1 {
@@ -413,6 +415,7 @@ struct BillingPreview: View {
                         Text(Localized("period_success_label")).font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: 80, alignment: .leading)
                         Text(Localized("success_count_label")).font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: 60, alignment: .leading)
                         Text(Localized("left_success_count_label")).font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: 70, alignment: .leading)
+                        Text(Localized("billing_date")).font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: 70, alignment: .leading)
                     }
                     .padding(.vertical, 8)
                     VStack(alignment: .leading, spacing: 0) {
@@ -427,6 +430,7 @@ struct BillingPreview: View {
                                 Text("\(list[idx].periodSuccess)").font(.system(size: 8)).foregroundColor(.text).frame(width: 80, alignment: .leading)
                                 Text("\(list[idx].successCount)").font(.system(size: 8)).foregroundColor(.text).frame(width: 60, alignment: .leading)
                                 Text("\(list[idx].leftSuccessCount)").font(.system(size: 8)).foregroundColor(.text).frame(width: 70, alignment: .leading)
+                                Text(list[idx].billingDate.yyyyMMddDateString).font(.system(size: 8)).foregroundColor(.text).frame(width: 70, alignment: .leading)
                             }
                             .padding(.vertical, 8)
                             if idx != list.count - 1 {
@@ -486,17 +490,20 @@ extension View {
 
         let orgs1 = OrgListModel()
         let org = OrgInfo(
+            region: .china,
             name: "123",
             successCount: 20,
             totalDeposits: 30,
             unitPrice: 1,
             periodSuccess: 10,
+            billingDate: Date(),
+            startDate: Date(),
+            endDate: Date(),
             licenses: [],
             studies:[
                 study1,
                 study2
-            ],
-            periodStudies: []
+            ]
         )
         orgs1.orgs = [org, org]
         return orgs1

@@ -1,13 +1,33 @@
 import Foundation
 
+enum Region: Int, Codable {
+    case china = 0
+    case international = 1
+    
+    var host: String {
+        switch self {
+        case .china:
+            return "https://api.prod.deepaffex.cn"
+        default:
+            return "https://api.as-east.deepaffex.ai"
+        }
+    }
+    
+    var name: String {
+        switch self {
+        case .china:
+            return Localized("region_china")
+        default:
+            return Localized("region_international")
+        }
+    }
+}
+
 // MARK: - HTTP Method Enum
 enum HTTPMethod: String {
     case get = "GET"
     case post = "POST"
-    // 可扩展更多方法
 }
-
-private let host = "https://api.prod.deepaffex.cn"
 
 // MARK: - APIRequest Struct
 struct APIRequest {
@@ -24,9 +44,101 @@ struct APIRequest {
     }
 }
 
+extension APIClient {
+    // 修改 getLicences、getStudies、updateStudies 支持进度回调
+    static func getLicences() async throws -> [String: [LicenseResponse]] {
+        var licensesDic = [String: [LicenseResponse]]()
+        var errors = [Error]()
+        await withTaskGroup(of: Result<(String, [LicenseResponse]), Error>.self) { group in
+            for user in SharedUsers {
+                group.addTask {
+                    do {
+                        let licenses = try await APIClient.getLicences(orgName: user.orgName, region: user.region, limit: 10)
+                        return .success((user.orgName, licenses))
+                    } catch {
+                        return .failure(error)
+                    }
+                }
+            }
+            for await result in group {
+                switch result {
+                case .success(let (orgName, licenses)):
+                    licensesDic[orgName] = licenses
+                case .failure(let error):
+                    errors.append(error)
+                }
+            }
+        }
+        if !errors.isEmpty {
+            throw errors.first!
+        }
+        return licensesDic
+    }
+
+    static func getStudies() async throws -> [String: [StudyResponse]] {
+        var studiesDic = [String: [StudyResponse]]()
+        var errors = [Error]()
+        await withTaskGroup(of: Result<(String, [StudyResponse]), Error>.self) { group in
+            for user in SharedUsers {
+                group.addTask {
+                    do {
+                        let studies = try await APIClient.getStudies(orgName: user.orgName, region: user.region, limit: 20)
+                        return .success((user.orgName, studies))
+                    } catch {
+                        return .failure(error)
+                    }
+                }
+            }
+            for await result in group {
+                switch result {
+                case .success(let (orgName, studies)):
+                    studiesDic[orgName] = studies
+                case .failure(let error):
+                    errors.append(error)
+                }
+            }
+        }
+        if !errors.isEmpty {
+            throw errors.first!
+        }
+        return studiesDic
+    }
+
+    static func updateStudies(_ studyDic: inout [String: [StudyResponse]], _ billingDateDic: [String: Date]? = nil, _ startDate: Date?, _ endDate: Date?, progress: @escaping () -> Void) async throws {
+        var dateStr: String? = nil
+        var endDateStr: String? = nil
+        if let startDate = startDate { dateStr = startDate.toUTCString() }
+        if let endDate = endDate { endDateStr = endDate.toUTCString() }
+        
+        for (orgName, studies) in studyDic {
+            var updatedStudies: [StudyResponse] = studies
+            let startDateStr = billingDateDic?[orgName]?.toUTCString() ?? dateStr
+            let region = SharedUsers.first(where: { $0.orgName == orgName })?.region ?? .china
+            try await withThrowingTaskGroup(of: (Int, Int?, Int?).self) { group in
+                for (index, study) in studies.enumerated() {
+                    group.addTask {
+                        let info = try await APIClient.getMeasurementInfo(orgName: orgName, region: region, studyID: study.ID, date: startDateStr, endDate: endDateStr, progress: progress)
+                        return (index, info.successCount, info.failCount)
+                    }
+                }
+                for try await (index, successCount, failCount) in group {
+                    if let count = successCount {
+                        updatedStudies[index].totalSuccessMeasurements = count
+                    }
+                    if let count = failCount {
+                        updatedStudies[index].totalFailMeasurements = count
+                    }
+                }
+            }
+            studyDic[orgName] = updatedStudies
+        }
+    }
+
+}
+
 // MARK: - APIClient Extension (Login)
 extension APIClient {
-    static func login(email: String, password: String, org: String) async throws -> LoginResponse {
+    static func login(email: String, password: String, org: String, region: Region) async throws -> LoginResponse {
         let body: [String: Any] = [
             "Email": email,
             "Password": password,
@@ -34,7 +146,7 @@ extension APIClient {
             "TokenExpiresIn": 3600 * 24
         ]
         let data = try await APIClient.shared.sendRequest(
-            urlString: host + "/organizations/auth",
+            urlString: region.host + "/organizations/auth",
             method: .post,
             urlParameters: nil,
             body: body,
@@ -43,11 +155,11 @@ extension APIClient {
         return try JSONDecoder().decode(LoginResponse.self, from: data)
     }
     
-    static func getLicences(orgName: String, limit: Int) async throws -> [LicenseResponse] {
+    static func getLicences(orgName: String, region: Region, limit: Int) async throws -> [LicenseResponse] {
         let urlParameters: [String: Any] = ["Limit": limit]
         
         let data = try await APIClient.shared.sendRequestWithTokenRefresh(
-            urlString: host + "/licenses/organization",
+            urlString: region.host + "/licenses/organization",
             method: .get,
             urlParameters: urlParameters,
             body: nil,
@@ -57,11 +169,11 @@ extension APIClient {
         return try JSONDecoder().decode([LicenseResponse].self, from: data)
     }
     
-    static func getStudies(orgName: String, limit: Int) async throws -> [StudyResponse] {
+    static func getStudies(orgName: String, region: Region, limit: Int) async throws -> [StudyResponse] {
         let urlParameters: [String: Any] = ["Limit": limit]
         
         let data = try await APIClient.shared.sendRequestWithTokenRefresh(
-            urlString: host + "/studies",
+            urlString: region.host + "/studies",
             method: .get,
             urlParameters: urlParameters,
             body: nil,
@@ -71,29 +183,34 @@ extension APIClient {
         return try JSONDecoder().decode([StudyResponse].self, from: data)
     }
     
-    static func getMeasurements(orgName: String, studyID: String, statusID: String? = nil, date: String? = nil, endDate: String? = nil) async throws -> [MeasurementResponse] {
+    static func getMeasurements(orgName: String, region: Region, studyID: String, statusID: String? = nil, date: String? = nil, endDate: String? = nil) async throws -> [MeasurementResponse] {
         var urlParameters: [String: Any] = ["Limit": 1,
                                             "StudyID": studyID]
         if let date = date { urlParameters["Date"] = date }
         if let endDate = endDate { urlParameters["EndDate"] = endDate }
         if let statusID = statusID { urlParameters["StatusID"] = statusID }
         let data = try await APIClient.shared.sendRequestWithTokenRefresh(
-            urlString: host + "/organizations/measurements",
+            urlString: region.host + "/organizations/measurements",
             method: .get,
             urlParameters: urlParameters,
             body: nil,
             headers: authHeader(orgName),
             orgName: orgName
         )
-        return try JSONDecoder().decode([MeasurementResponse].self, from: data)
+        if let dataString = String(data: data, encoding: .utf8), dataString.isEmpty {
+            print("111111")
+            return []
+        } else {
+            return try JSONDecoder().decode([MeasurementResponse].self, from: data)
+        }
     }
     
-    static func getMeasurementInfo(orgName: String, studyID: String, date: String? = nil, endDate: String? = nil, progress: @escaping () -> Void) async throws -> MeasurementInfo {
-        let totalMeasurements = try await getMeasurements(orgName: orgName, studyID: studyID, date: date, endDate: endDate)
+    static func getMeasurementInfo(orgName: String, region: Region, studyID: String, date: String? = nil, endDate: String? = nil, progress: @escaping () -> Void) async throws -> MeasurementInfo {
+        let totalMeasurements = try await getMeasurements(orgName: orgName, region: region, studyID: studyID, date: date, endDate: endDate)
         progress()
-        let completeMeasurements = try await getMeasurements(orgName: orgName, studyID: studyID, statusID: "COMPLETE", date: date, endDate: endDate)
+        let completeMeasurements = try await getMeasurements(orgName: orgName, region: region, studyID: studyID, statusID: "COMPLETE", date: date, endDate: endDate)
         progress()
-        let partialMeasurements = try await getMeasurements(orgName: orgName, studyID: studyID, statusID: "PARTIAL", date: date, endDate: endDate)
+        let partialMeasurements = try await getMeasurements(orgName: orgName, region: region, studyID: studyID, statusID: "PARTIAL", date: date, endDate: endDate)
         progress()
         let totalCount = totalMeasurements.first?.TotalCount ?? 0
         let completeCount = completeMeasurements.first?.TotalCount ?? 0
@@ -145,7 +262,7 @@ class APIClient {
             request.httpBody = try? JSONSerialization.data(withJSONObject: params, options: [])
         }
         
-        // print("API->: \(requestURL)")
+         print("API->: \(requestURL)")
 
         let task = URLSession.shared.dataTask(with: request) { data, response, error in
             if let error = error {
@@ -246,7 +363,7 @@ class APIClient {
                let userIdx = SharedUsers.firstIndex(where: { $0.orgName == orgName }) {
                 let user = SharedUsers[userIdx]
                 // 自动刷新token
-                let loginResponse = try await APIClient.login(email: user.email, password: user.password, org: user.orgName)
+                let loginResponse = try await APIClient.login(email: user.email, password: user.password, org: user.orgName, region: user.region)
                 // 更新token到SharedUsers和UserStorage
                 var updatedUser = user
                 updatedUser.token = loginResponse.Token
@@ -265,50 +382,4 @@ class APIClient {
             }
         }
     }
-}
-
-
-extension TimeInterval {
-    func toDateString() -> String {
-        let date = Date(timeIntervalSince1970: self)
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        formatter.locale = Locale(identifier: "zh_CN") // 设置中文locale，确保格式统一
-        formatter.timeZone = TimeZone(secondsFromGMT: 8) // 可选：设置时区，默认使用系统时区
-        return formatter.string(from: date)
-    }
-}
-
-extension Date {
-    var yyyyMMddDateString: String {
-        if LanguageManager.shared.isCNLanguage() {
-            return dateFormatter("yyyy.MM.dd").string(from: self)
-        }
-        return dateFormatter("MM/dd/yyyy").string(from: self)
-    }
-    
-    var yyyyMMddhhmmssDateString: String {
-        return dateFormatter("yyyyMMddhhmmss").string(from: self)
-    }
-    
-    var yyyyMMddhhmmssDateString2: String {
-        return dateFormatter("yyyy-MM-dd hh:mm:ss").string(from: self)
-    }
-        
-    func dateFormatter(_ dateFormat: String) -> DateFormatter {
-        let formatter = DateFormatter()
-        formatter.dateFormat = dateFormat
-        formatter.locale = Locale.current // 跟随系统语言
-        return formatter
-    }
-
-    // 自定义格式的 UTC 字符串
-    func toUTCString(format: String = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'") -> String {
-        let formatter = DateFormatter()
-        formatter.timeZone = TimeZone(abbreviation: "UTC")
-        formatter.dateFormat = format
-//        formatter.locale = Locale(identifier: "en_US_POSIX")
-        return formatter.string(from: self)
-    }
-    
 }

@@ -3,14 +3,17 @@ import SwiftUI
 
 struct OrgInfo: Identifiable {
     let id = UUID()
+    let region: Region
     let name: String
     let successCount: Int
     var totalDeposits: Double
     var unitPrice: Double
     let periodSuccess: Int
+    var billingDate: Date
+    var startDate: Date
+    var endDate: Date
     let licenses: [LicenseResponse]
     var studies: [StudyResponse]
-    var periodStudies: [StudyResponse]
     
     var licenseCount: Int {
         return licenses.count
@@ -28,11 +31,15 @@ struct OrgInfo: Identifiable {
     }
     
     var totalCost: Double {
-        return studies.reduce(0) { $0 + ($1.unitPrice ?? unitPrice) * Double($1.successMeasurements ?? 0) }
+        return studies.reduce(0) {
+            return $0 + $1.totalCost
+        }
     }
     
     var periodCost: Double {
-        return periodStudies.reduce(0) { $0 + ($1.unitPrice ?? unitPrice) * Double($1.successMeasurements ?? 0) }
+        return studies.reduce(0) {
+            return $0 + $1.periodCost
+        }
     }
     
     var totalCostString: String {
@@ -70,10 +77,7 @@ struct OrgInfo: Identifiable {
     
     mutating func resetStudyUnitPrice() {
         for i in studies.indices {
-            studies[i].unitPrice = nil
-        }
-        for i in periodStudies.indices {
-            periodStudies[i].unitPrice = nil
+            studies[i].unitPrice = unitPrice
         }
     }
 }
@@ -176,9 +180,23 @@ struct StudyResponse: Codable {
     let StatusID: String
     let Measurements: Int
     var TotalCount: Int?
-    var successMeasurements: Int?
-    var failCount: Int?
+    var totalSuccessMeasurements: Int?
+    var periodSuccessMeasurements: Int?
+    var billingSuccessMeasurements: Int?
+    var periodBillingSuccessMeasurements: Int?
+    var totalFailMeasurements: Int?
+    var periodFailMeasurements: Int?
+    var billingFailMeasurements: Int?
     var unitPrice: Double?
+    var periodCost: Double {
+        let periodSuccessMeasurements = periodBillingSuccessMeasurements ?? periodSuccessMeasurements ?? totalSuccessMeasurements ?? 0
+        return (unitPrice ?? 0) * Double(periodSuccessMeasurements)
+    }
+    
+    var totalCost: Double {
+        let totalCostSuccessMeasurements = billingSuccessMeasurements ?? totalSuccessMeasurements ?? 0
+        return (unitPrice ?? 0) * Double(totalCostSuccessMeasurements)
+    }
 
     var statusString: String {
         switch StatusID {

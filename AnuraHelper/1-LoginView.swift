@@ -11,8 +11,13 @@ struct User: Codable, Sendable {
     let orgName: String
     let email: String
     let password: String
+    let region: Region
     var deposits: Double
     var unitPrice: Double
+    var billingDate: Date
+    var period: DateFilter? = nil
+    var customPeriodStartDate: Date? = nil
+    var customPeriodEndDate: Date? = nil
     var studyUnitPrices: [String: Double]? = nil
     var token: String? = nil
 }
@@ -39,22 +44,25 @@ struct UserStorage {
     }
 }
 
+let kInitialStartDate = Calendar.current.date(from: DateComponents(year: 2020, month: 1, day: 1)) ?? Date()
+
 // 引入AlertManager
 struct LoginView: View {
 //    @State private var orgName: String = "support"
 //    @State private var email: String = "michaelxu@nuralogix.ai"
 //    @State private var password: String = "Xq1988050414132024!"
 //    @State private var multiAccountText: String = """
-//        support michaelxu@nuralogix.ai Xq1988050414132024! 20000 0.8
-//        support michaelxu@nuralogix.ai Xq1988050414132024! 5000 1.2
-//        support michaelxu@nuralogix.ai Xq1988050414132024! 3000 1.2
+//        support michaelxu@nuralogix.ai Xq1988050414132024! 20000 0.8 2020.01.01 0
+//        support michaelxu@nuralogix.ai Xq1988050414132024! 5000 1.2 2020.01.01 0
+//        support michaelxu@nuralogix.ai Xq1988050414132024! 3000 1.2 2020.01.01 1
 //        """
     @State private var orgName: String = ""
     @State private var email: String = ""
     @State private var password: String = ""
     @State private var multiAccountText: String = ""
-
-    @State private var isMultiAccountMode: Bool = true
+    
+    @State private var region: Region = .china
+    @State private var isMultiAccountMode: Bool = false
     @State private var isBillingListActive = false
     @StateObject private var alertManager = AlertManager()
     @ObservedObject private var langManager = LanguageManager.shared // 新增，监听语言变化
@@ -77,7 +85,8 @@ struct LoginView: View {
                         orgName: $orgName,
                         email: $email,
                         password: $password,
-                        multiAccountText: $multiAccountText
+                        multiAccountText: $multiAccountText,
+                        region: $region
                     )
                                 
                     // 切换按钮（右下角）
@@ -159,7 +168,7 @@ struct LoginView: View {
     func login() async {
         if (isMultiAccountMode && multiAccountText.isEmpty) ||
         (!isMultiAccountMode && (orgName.isEmpty || email.isEmpty || password.isEmpty)){
-            alertManager.showAlert(title: NSLocalizedString("alert_title", comment: "提示"), message: NSLocalizedString("alert_fill_all", comment: "请填写完整信息"))
+            alertManager.showAlert(title: Localized("alert_title"), message: Localized("alert_fill_all"))
             isLoading = false
             return
         }
@@ -168,25 +177,35 @@ struct LoginView: View {
             let user = User(orgName: orgName,
                             email: email,
                             password: password,
+                            region: region,
                             deposits: 99999,
-                            unitPrice: 1.0)
+                            unitPrice: 1.0,
+                            billingDate: kInitialStartDate)
             users.append(user)
         } else {
             let strArr = multiAccountText.split(separator: "\n")
             for line in strArr {
                 let components = line.split(separator: " ")
-                if components.count >= 5 {
+                if components.count >= 7 {
                     let org = String(components[0])
                     let email = String(components[1])
                     let password = String(components[2])
                     let deposits = Double(components[3]) ?? 1.0
                     let unitPrice = Double(components[4]) ?? 1.0
+                    let billingDate = String(components[5]).dateFromYyyyMMddString ?? kInitialStartDate
+                    let region = Region(rawValue: Int(components[6]) ?? 0) ?? .china
                     let user = User(orgName: org,
                                     email: email,
                                     password: password,
+                                    region: region,
                                     deposits: deposits,
-                                    unitPrice: unitPrice)
+                                    unitPrice: unitPrice,
+                                    billingDate: billingDate)
                     users.append(user)
+                } else {
+                    alertManager.showAlert(title: Localized("alert_title"), message: Localized("alert_fill_format"))
+                    isLoading = false
+                    return
                 }
             }
         }
@@ -198,13 +217,15 @@ struct LoginView: View {
                 for user in users {
                     group.addTask {
                         do {
-                            let response = try await APIClient.login(email: user.email, password: user.password, org: user.orgName)
+                            let response = try await APIClient.login(email: user.email, password: user.password, org: user.orgName, region: user.region)
                             tag += 1
                             let updateUser = User(orgName: user.orgName,
                                                   email: user.email,
                                                   password: user.password,
+                                                  region: user.region,
                                                   deposits: user.deposits,
                                                   unitPrice: user.unitPrice,
+                                                  billingDate: user.billingDate,
                                                   token: response.Token)
                             return .success((updateUser, response))
                         } catch {
@@ -224,7 +245,7 @@ struct LoginView: View {
             let failed = loginResults.first(where: { if case .failure(_) = $0 { return true } else { return false } })
             if let fail = failed {
                 if case .failure(let error) = fail {
-                    alertManager.showAlert(title: NSLocalizedString("login_failed", comment: "登录失败"), message: error.localizedDescription)
+                    alertManager.showAlert(title: Localized("login_failed"), message: error.localizedDescription)
                     isLoading = false
                     return
                 }
@@ -247,7 +268,8 @@ struct LoginInputArea: View {
     @Binding var email: String
     @Binding var password: String
     @Binding var multiAccountText: String
-    
+    @Binding var region: Region // 新增
+
     var body: some View {
         if isMultiAccountMode {
             VStack(alignment: .leading) {
@@ -277,17 +299,27 @@ struct LoginInputArea: View {
                 }
             }
             .padding(.horizontal, 30)
-            .frame(height: 186)
+            .frame(height: 186 + 41)
         } else {
-            VStack() {
-                InputField(label: Localized("org_label"), placeholder: "org", text: $orgName)
-                Spacer()
-                InputField(label: Localized("email_label"), placeholder: "example@gmail.com", text: $email)
-                Spacer()
-                InputField(label: Localized("password_label"), placeholder: "123456", text: $password, isSecure: true)
+            VStack {
+                VStack(alignment: .leading, spacing: 30) {
+                    InputField(label: Localized("org_label"), placeholder: "org", text: $orgName)
+                    InputField(label: Localized("email_label"), placeholder: "example@gmail.com", text: $email)
+                    InputField(label: Localized("password_label"), placeholder: "123456", text: $password, isSecure: true)
+                }
+                .padding(.horizontal, 30)
+                .frame(height: 186)
+                
+                Picker("", selection: $region) {
+                    Text(Region.china.name).tag(Region.china)
+                    Text(Region.international.name).tag(Region.international)
+                }
+                .pickerStyle(.segmented)
+                .frame(width: 120)
+                .padding(.top, 2)
+                .padding(.horizontal, 30)
+                .frame(maxWidth: .infinity, alignment: .trailing)
             }
-            .padding(.horizontal, 30)
-            .frame(height: 186)
         }
     }
 }

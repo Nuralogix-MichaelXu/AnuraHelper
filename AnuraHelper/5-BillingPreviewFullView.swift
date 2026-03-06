@@ -38,7 +38,7 @@ struct BillingPreviewFullView: View {
                         .foregroundColor(.text)
                 }
                 
-                let scale: CGFloat = 1.4
+                let scale: CGFloat = 1.2
 
                 VStack(alignment: .leading, spacing: 0) {
                     // 表头
@@ -52,6 +52,7 @@ struct BillingPreviewFullView: View {
                         Text(Localized("period_success_label2")).font(.system(size: 8*scale, weight: .medium)).foregroundColor(.text).frame(width: 50*scale, alignment: .leading)
                         Text(Localized("success_count_label")).font(.system(size: 8*scale, weight: .medium)).foregroundColor(.text).frame(width: 60*scale, alignment: .leading)
                         Text(Localized("left_success_count_label")).font(.system(size: 8*scale, weight: .medium)).foregroundColor(.text).frame(width: AutoSize(70, 60)*scale, alignment: .leading)
+                        Text(Localized("billing_date")).font(.system(size: 8*scale, weight: .medium)).foregroundColor(.text).frame(width: 70, alignment: .leading)
                         Spacer()
                     }
                     .padding(.vertical, 8*scale)
@@ -67,10 +68,11 @@ struct BillingPreviewFullView: View {
                                     Text(orgList.orgs[idx].periodCostString).font(.system(size: 8*scale)).foregroundColor(.text).frame(width: 40*scale, alignment: .leading)
                                     Text(orgList.orgs[idx].totalCostString).font(.system(size: 8*scale)).foregroundColor(.text).frame(width: 45*scale, alignment: .leading)
                                     Text(orgList.orgs[idx].balanceString).font(.system(size: 8*scale)).foregroundColor(orgList.orgs[idx].balanceColor).frame(width: AutoSize(40, 55)*scale, alignment: .leading)
-                                    Text("1.0/2.35/3.0/2.4").font(.system(size: 8*scale)).foregroundColor(.text).frame(width: 60*scale, alignment: .leading)
+                                    Text(orgList.orgs[idx].unitPriceString).font(.system(size: 8*scale)).foregroundColor(.text).frame(width: 60*scale, alignment: .leading)
                                     Text("\(orgList.orgs[idx].periodSuccess)").font(.system(size: 8*scale)).foregroundColor(.text).frame(width: 50*scale, alignment: .leading)
                                     Text("\(orgList.orgs[idx].successCount)").font(.system(size: 8*scale)).foregroundColor(.text).frame(width: 60*scale, alignment: .leading)
                                     Text("\(orgList.orgs[idx].leftSuccessCount)").font(.system(size: 8*scale)).foregroundColor(.text).frame(width: AutoSize(70, 60)*scale, alignment: .leading)
+                                    Text(orgList.orgs[idx].billingDate.yyyyMMddDateString).font(.system(size: 8*scale)).foregroundColor(.text).frame(width: 70, alignment: .leading)
                                 }
                                 .padding(.vertical, 8*scale)
                                 if idx != orgList.orgs.count - 1 {
@@ -100,14 +102,17 @@ struct BillingPreviewFullView: View {
     let orgs1: OrgListModel = {
         let orgs1 = OrgListModel()
         let org = OrgInfo(
+            region: .china,
             name: "",
             successCount: 0,
             totalDeposits: 0,
             unitPrice: 1,
             periodSuccess: 0,
+            billingDate: Date(),
+            startDate: Date(),
+            endDate: Date(),
             licenses: [LicenseResponse(Created: 123132323, StatusID: "111", Expiration: "1231231123", MaxDevices: 34, Key: "121212121", DeviceRegistrations: 23, LicenseType: "2")],
             studies: [],
-            periodStudies: []
         )
         orgs1.orgs = [org, org]
         return orgs1

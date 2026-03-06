@@ -8,16 +8,21 @@
 import SwiftUI
 
 struct BillingDetailView: View {
+    @StateObject private var alertManager = AlertManager()
     @Environment(\.presentationMode) private var presentationMode
     @Binding var org: OrgInfo
     let period: String
     @State private var showDepositsAlert = false
     @State private var tempDepositsValue = ""
     @State private var showUnitPriceAlert = false
+    @State private var showDatePicker = false
     @State private var tempUnitPriceValue = ""
     @State private var editingStudy: StudyResponse? = nil // 新增：当前正在编辑的study
     @State private var tempStudyUnitPriceValue = "" // 新增：study单价临时值
-    
+    @State private var billingDateString = ""
+    @State private var currentTask: Task<Void, Never>? = nil // 新增: 当前请求任务
+    @State private var isRefreshing = false
+
     var body: some View {
         NavigationView {
             ZStack(alignment: .bottomTrailing) {
@@ -85,6 +90,36 @@ struct BillingDetailView: View {
                                         .foregroundColor(org.balanceColor)
                                 }
                             }
+                            
+                            HStack(alignment: .center, spacing: 0) {
+                                HStack(spacing: 0) {
+                                    Text(Localized("billing_date") + ": ")
+                                        .font(.system(size: 12))
+                                        .foregroundColor(.text)
+                                    Text(billingDateString)
+                                        .font(.system(size: 12))
+                                        .foregroundColor(.text)
+                                    Image(systemName: "calendar")
+                                        .resizable()
+                                        .frame(width: 12, height: 12)
+                                        .foregroundColor(.deepPurple)
+                                        .padding(.leading, 3)
+                                        .padding(.top, -1)
+                                        .onTapGesture {
+                                            showDatePicker = true
+                                        }
+                                    
+                                    if isRefreshing {
+                                        ProgressView()
+                                            .progressViewStyle(CircularProgressViewStyle(tint: .gray))
+                                            .scaleEffect(0.65)
+                                            .frame(width: 12, height: 12)
+                                            .padding(.leading, 5)
+                                            .padding(.bottom, 1)
+                                    }
+                                }
+                                Spacer()
+                            }
                         }
                         .padding(.top, 35)
                         .padding(.horizontal, 20)
@@ -103,46 +138,48 @@ struct BillingDetailView: View {
                         .padding(.bottom, 20)
                         
                         ScrollView(.vertical, showsIndicators: false) {
-                            // 许可证表格
-                            VStack(spacing: 0) {
-                                HStack {
-                                    Text(Localized("license_table_title"))
-                                        .font(.system(size: 12, weight: .medium))
-                                        .padding(.vertical, 10)
-                                    Spacer()
-                                }
-                                .padding(.horizontal, 20)
-                                .background(Color(UIColor.systemGray6))
-                                
-                                ScrollView(.horizontal, showsIndicators: false) {
-                                    VStack(spacing: 0) {
-                                        HStack(alignment: .bottom, spacing: 0) {
-                                            Text(Localized("created_date")).frame(width: 70, alignment: .leading)
-                                            Text(Localized("license_type")).frame(width: AutoSize(50, 65), alignment: .leading)
-                                            Text(Localized("device_registration")).frame(width: AutoSize(75, 85), alignment: .leading)
-                                            Text(Localized("status")).frame(width: 50, alignment: .leading)
-                                            Text(Localized("expiration")).frame(width: AutoSize(65, 95), alignment: .leading)
-                                            Text(Localized("license_key")).frame(width: 60, alignment: .leading)
-                                        }
-                                        .font(.system(size: 8, weight: .medium))
-                                        .foregroundColor(.text)
-                                        .padding(.top, 12)
-                                        .padding(.bottom, 4)
-                                        .padding(.horizontal, 20)
-                                        .background(Color.white)
-                                        ForEach(licenses.indices, id: \ .self) { idx in
-                                            LicenseRowView(license: licenses[idx])
-                                            if idx != licenses.count - 1 {
-                                                Divider()
-                                                    .background(Color(UIColor.systemGray5))
-                                                    .padding(.horizontal, 20)
+                            if !org.licenses.isEmpty {
+                                // 许可证表格
+                                VStack(spacing: 0) {
+                                    HStack {
+                                        Text(Localized("license_table_title"))
+                                            .font(.system(size: 12, weight: .medium))
+                                            .padding(.vertical, 10)
+                                        Spacer()
+                                    }
+                                    .padding(.horizontal, 20)
+                                    .background(Color(UIColor.systemGray6))
+                                    
+                                    ScrollView(.horizontal, showsIndicators: false) {
+                                        VStack(spacing: 0) {
+                                            HStack(alignment: .bottom, spacing: 0) {
+                                                Text(Localized("created_date")).frame(width: 70, alignment: .leading)
+                                                Text(Localized("license_type")).frame(width: AutoSize(50, 65), alignment: .leading)
+                                                Text(Localized("device_registration")).frame(width: AutoSize(75, 85), alignment: .leading)
+                                                Text(Localized("status")).frame(width: 50, alignment: .leading)
+                                                Text(Localized("expiration")).frame(width: AutoSize(65, 95), alignment: .leading)
+                                                Text(Localized("license_key")).frame(width: 60, alignment: .leading)
+                                            }
+                                            .font(.system(size: 8, weight: .medium))
+                                            .foregroundColor(.text)
+                                            .padding(.top, 12)
+                                            .padding(.bottom, 4)
+                                            .padding(.horizontal, 20)
+                                            .background(Color.white)
+                                            ForEach(licenses.indices, id: \ .self) { idx in
+                                                LicenseRowView(license: licenses[idx])
+                                                if idx != licenses.count - 1 {
+                                                    Divider()
+                                                        .background(Color(UIColor.systemGray5))
+                                                        .padding(.horizontal, 20)
+                                                }
                                             }
                                         }
                                     }
+                                    .enableSwipeBack()
                                 }
-                                .enableSwipeBack()
+                                .background(Color.white)
                             }
-                            .background(Color.white)
                             
                             // 研究表格
                             VStack(spacing: 0) {
@@ -177,10 +214,8 @@ struct BillingDetailView: View {
                                         .padding(.horizontal, 20)
                                         .background(Color.white)
                                         ForEach(studies.indices, id: \ .self) { idx in
-                                            let period = periodStudies.indices.contains(idx) ? periodStudies[idx] : studies[idx]
                                             StudyRowView(
                                                 study: studies[idx],
-                                                period: period,
                                                 unitPrice: studies[idx].unitPrice ?? org.unitPrice,
                                                 onEditUnitPrice: { study in
                                                     editingStudy = study
@@ -194,11 +229,14 @@ struct BillingDetailView: View {
                                         StudySummaryRowView(
                                             count: studies.count,
                                             totalPeriodSuccessCount: totalPeriodSuccessCount,
+                                            totalBillingSuccessCount: totalBillingSuccessCount,
                                             totalPeriodFailCount: totalPeriodFailCount,
-                                            totalPeriodCost: totalPeriodCost,
+                                            totalPeriodSuccessCost: totalPeriodSuccessCost,
                                             totalSuccessCount: totalSuccessCount,
                                             totalFailCount: totalFailCount,
-                                            totalCost: totalCost
+                                            totalCost: totalCost,
+                                            isPeriodCostHighlight: isPeriodCostHighlight,
+                                            isCostHighlight: isCostHighlight
                                         )
                                     }
                                 }
@@ -239,7 +277,6 @@ struct BillingDetailView: View {
                     org.unitPrice = newValue
                     org.resetStudyUnitPrice()
                     org.studies = org.studies // 触发刷新
-                    org.periodStudies = org.periodStudies // 触发刷新
                     if let idx = SharedUsers.firstIndex(where: { $0.orgName == org.name }) {
                         var user = SharedUsers[idx]
                         user.unitPrice = newValue
@@ -260,12 +297,9 @@ struct BillingDetailView: View {
                 .keyboardType(.decimalPad)
             Button(Localized("confirm")) {
                 if let editingStudy = editingStudy, let newValue = Double(tempStudyUnitPriceValue) {
-                    if let idx1 = org.studies.firstIndex(where: { $0.ID == editingStudy.ID }),
-                        let idx2 = org.periodStudies.firstIndex(where: { $0.ID == editingStudy.ID }){
+                    if let idx1 = org.studies.firstIndex(where: { $0.ID == editingStudy.ID }) {
                         org.studies[idx1].unitPrice = newValue
                         org.studies = org.studies // 触发刷新
-                        org.periodStudies[idx2].unitPrice = newValue
-                        org.periodStudies = org.periodStudies // 触发刷新
                         if let idx = SharedUsers.firstIndex(where: { $0.orgName == org.name }) {
                             var user = SharedUsers[idx]
                             var studyUnitPrice = user.studyUnitPrices ?? [:]
@@ -282,7 +316,97 @@ struct BillingDetailView: View {
                 editingStudy = nil
             }
         })
+        .sheet(isPresented: $showDatePicker) {
+            VStack {
+                DatePicker(Localized("billing_date"), selection: $org.billingDate, in: ...Date(), displayedComponents: .date)
+                    .datePickerStyle(.graphical)
+                    .labelsHidden()
+                    .environment(\.locale, Locale.preferredLanguages.first.map { Locale(identifier: $0) } ?? Locale.current)
+                HStack {
+                    Button(Localized("reset")) {
+                        showDatePicker = false
+                        org.billingDate = kInitialStartDate
+                    }
+                    .padding()
+                    Spacer()
+                    Button(Localized("confirm")) {
+                        showDatePicker = false
+                    }
+                    .padding()
+                }
+                .padding(.horizontal, 50)
+            }
+            .presentationDetents([.medium])
+            .onDisappear {
+                billingDateString = org.billingDate.yyyyMMddDateString
+                if let idx = SharedUsers.firstIndex(where: { $0.orgName == org.name }) {
+                    var user = SharedUsers[idx]
+                    user.billingDate = org.billingDate
+                    SharedUsers[idx] = user
+                    UserStorage.save(users: SharedUsers)
+                    // 更新billingSuccess数据
+                    updateStudies()
+                }
+            }
+        }
+        .alert(isPresented: $alertManager.isPresented) {
+            Alert(
+                title: Text(alertManager.title),
+                message: Text(alertManager.message),
+                primaryButton: .default(Text(alertManager.buttonText)) {
+                    alertManager.onDismiss?()
+                },
+                secondaryButton: .cancel(Text(Localized("cancel"))) {
+                    alertManager.isPresented = false
+                }
+            )
+        }
+        .onAppear {
+            billingDateString = org.billingDate.yyyyMMddDateString
+        }
     }
+    
+    func updateStudies() {
+        isRefreshing = true
+        currentTask?.cancel()
+        currentTask = Task {
+            do {
+                var studiesDic = [org.name: org.studies]
+                let billingDateDic = [org.name: org.billingDate]
+                
+                if org.billingDate > org.startDate && org.billingDate < org.endDate {
+                    try await APIClient.updateStudies(&studiesDic, billingDateDic, nil, org.endDate, progress: {} )
+                    for study in studiesDic[org.name]! {
+                        if let idx = org.studies.firstIndex(where: { $0.ID == study.ID }) {
+                            org.studies[idx].periodBillingSuccessMeasurements = study.totalSuccessMeasurements
+                        }
+                    }
+                } else {
+                    for idx in org.studies.indices {
+                        var study = org.studies[idx]
+                        if org.billingDate > org.endDate {
+                            study.periodBillingSuccessMeasurements = 0
+                        } else {
+                            study.periodBillingSuccessMeasurements = nil
+                        }
+                    }
+                }
+
+                try await APIClient.updateStudies(&studiesDic, billingDateDic, nil, nil, progress: {} )
+                for study in studiesDic[org.name]! {
+                    if let idx = org.studies.firstIndex(where: { $0.ID == study.ID }) {
+                        org.studies[idx].billingSuccessMeasurements = study.totalSuccessMeasurements
+                    }
+                }
+                isRefreshing = false
+            } catch {
+                print("getData error: \(error.localizedDescription)")
+                isRefreshing = false
+                alertManager.showAlert(title: Localized("alert_title"), message: Localized("Error: \(error.localizedDescription)"))
+            }
+        }
+    }
+    
 }
 
 // MARK: - 子视图优化
@@ -308,12 +432,17 @@ private struct LicenseRowView: View {
 
 private struct StudyRowView: View {
     let study: StudyResponse
-    let period: StudyResponse
     let unitPrice: Double
     let onEditUnitPrice: (StudyResponse) -> Void // 新增：编辑单价回调
     var body: some View {
-        let cost = (study.unitPrice ?? unitPrice) * Double(study.successMeasurements ?? 0)
-        let cost_period = (study.unitPrice ?? unitPrice) * Double(period.successMeasurements ?? 0)
+        let totalSuccessMeasurements = study.totalSuccessMeasurements ?? 0
+        let periodSuccessMeasurements = study.periodSuccessMeasurements ?? totalSuccessMeasurements
+        let periodCost = study.periodCost
+        let cost = study.totalCost
+        
+        let isPeriodCostHighlight = periodCost < unitPrice * Double(periodSuccessMeasurements)
+        let isCostHighlight = cost < unitPrice * Double(totalSuccessMeasurements)
+
         HStack(spacing: 0) {
             Text(study.createdDateString).frame(width: 70, alignment: .leading)
             Text(study.Name).frame(width: 90, alignment: .leading)
@@ -330,12 +459,15 @@ private struct StudyRowView: View {
                         .padding(.leading, 0)
                 }
             }.frame(width: 70, alignment: .leading)
-            Text("\(period.successMeasurements ?? 0)").frame(width: AutoSize(60, 85), alignment: .leading)
-            Text(formatAmount(cost_period)).frame(width: AutoSize(65, 75), alignment: .leading)
-            Text("\(study.successMeasurements ?? 0)").frame(width: AutoSize(60, 80), alignment: .leading)
+            Text("\(periodSuccessMeasurements)").frame(width: AutoSize(60, 85), alignment: .leading)
+            Text(formatAmount(periodCost)).frame(width: AutoSize(65, 75), alignment: .leading)
+                .foregroundColor(isPeriodCostHighlight ? .orange : .text)
+
+            Text("\(totalSuccessMeasurements)").frame(width: AutoSize(60, 80), alignment: .leading)
             Text(formatAmount(cost)).frame(width: AutoSize(55, 60), alignment: .leading)
-            Text("\(period.failCount ?? 0)").frame(width: 60, alignment: .leading)
-            Text("\(study.failCount ?? 0)").frame(width: 55, alignment: .leading)
+                .foregroundColor(isCostHighlight ? .orange : .text)
+            Text("\(study.periodFailMeasurements ?? 0)").frame(width: 60, alignment: .leading)
+            Text("\(study.totalFailMeasurements ?? 0)").frame(width: 55, alignment: .leading)
             Text(study.encryptedKey).frame(width: 60, alignment: .leading)
         }
         .font(.system(size: 8))
@@ -350,18 +482,24 @@ private struct StudyRowView: View {
 private struct StudySummaryRowView: View {
     let count: Int
     let totalPeriodSuccessCount: Int
+    let totalBillingSuccessCount: Int
     let totalPeriodFailCount: Int
-    let totalPeriodCost: Double
+    let totalPeriodSuccessCost: Double
     let totalSuccessCount: Int
     let totalFailCount: Int
     let totalCost: Double
+    let isPeriodCostHighlight: Bool
+    let isCostHighlight: Bool
+
     var body: some View {
         HStack(spacing: 0) {
             Text(Localized("summary_total") + "(\(count))").frame(width: 280, alignment: .leading)
             Text("\(totalPeriodSuccessCount)").frame(width: AutoSize(60, 85), alignment: .leading)
-            Text(formatAmount(totalPeriodCost)).frame(width: AutoSize(65, 75), alignment: .leading)
+            Text(formatAmount(totalPeriodSuccessCost)).frame(width: AutoSize(65, 75), alignment: .leading)
+                .foregroundColor(isPeriodCostHighlight ? .orange : .text)
             Text("\(totalSuccessCount)").frame(width: AutoSize(60, 80), alignment: .leading)
             Text(formatAmount(totalCost)).frame(width: 55, alignment: .leading)
+                .foregroundColor(isCostHighlight ? .orange : .text)
             Text("\(totalPeriodFailCount)").frame(width: 60, alignment: .leading)
             Text("\(totalFailCount)").frame(width: AutoSize(50, 60), alignment: .leading)
             Spacer()
@@ -376,25 +514,35 @@ private struct StudySummaryRowView: View {
 
 extension BillingDetailView {
     private var studies: [StudyResponse] { org.studies }
-    private var periodStudies: [StudyResponse] { org.periodStudies }
     private var licenses: [LicenseResponse] { org.licenses }
     private var totalPeriodSuccessCount: Int {
-        periodStudies.reduce(0) { $0 + ($1.successMeasurements ?? 0) }
+        studies.reduce(0) { $0 + ($1.periodSuccessMeasurements ?? $1.totalSuccessMeasurements ?? 0) }
+    }
+    private var totalBillingSuccessCount: Int {
+        studies.reduce(0) { $0 + ($1.billingSuccessMeasurements ?? $1.totalSuccessMeasurements ?? 0) }
     }
     private var totalPeriodFailCount: Int {
-        periodStudies.reduce(0) { $0 + ($1.failCount ?? 0) }
+        studies.reduce(0) { $0 + ($1.periodFailMeasurements ?? 0) }
     }
-    private var totalPeriodCost: Double {
-        periodStudies.reduce(0) { $0 + ($1.unitPrice ?? org.unitPrice) * Double($1.successMeasurements ?? 0) }
+    private var totalPeriodSuccessCost: Double {
+        org.periodCost
     }
     private var totalSuccessCount: Int {
-        studies.reduce(0) { $0 + ($1.successMeasurements ?? 0) }
+        studies.reduce(0) { $0 + ($1.totalSuccessMeasurements ?? 0) }
     }
     private var totalFailCount: Int {
-        studies.reduce(0) { $0 + ($1.failCount ?? 0) }
+        studies.reduce(0) { $0 + ($1.totalFailMeasurements ?? 0) }
     }
     private var totalCost: Double {
-        studies.reduce(0) { $0 + ($1.unitPrice ?? org.unitPrice) * Double($1.successMeasurements ?? 0) }
+        org.totalCost
+    }
+    private var isPeriodCostHighlight: Bool {
+        let periodCost = studies.reduce(0) { $0 + (Double($1.periodSuccessMeasurements ?? 0) * ($1.unitPrice ?? org.unitPrice)) }
+        return org.periodCost < periodCost
+    }
+    private var isCostHighlight: Bool {
+        let totalCost = studies.reduce(0) { $0 + (Double($1.totalSuccessMeasurements ?? 0) * ($1.unitPrice ?? org.unitPrice)) }
+        return org.totalCost < totalCost
     }
 }
 
@@ -434,11 +582,15 @@ extension View {
 #Preview {
     BillingDetailView(org:
             .constant(OrgInfo(
+                region: .china,
                 name: "111",
-                successCount: 0,
-                totalDeposits: 0,
+                successCount: 200,
+                totalDeposits: 10000,
                 unitPrice: 0.8,
-                periodSuccess: 0,
+                periodSuccess: 100,
+                billingDate: Date(),
+                startDate: Date(),
+                endDate: Date(),
                 licenses:[
                     LicenseResponse(Created: 123132323,
                                           StatusID: "111",
@@ -467,8 +619,7 @@ extension View {
                                   Description: "test demo3",
                                   StatusID: "DELETED",
                                   Measurements: 10)
-                ],
-                periodStudies: [],
+                ]
             )), period: "2026.01.01 ~ 2026.01.31"
     )
 }

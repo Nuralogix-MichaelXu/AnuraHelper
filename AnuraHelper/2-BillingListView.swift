@@ -6,9 +6,10 @@ class OrgListModel: ObservableObject {
     @Published var billingPeriod = ""
     @Published var billingName = ""
     @Published var updateTime = Date()
+    @Published var isUpdateFail = false
 }
 
-enum DateFilter: String, CaseIterable {
+enum DateFilter: String, CaseIterable, Codable {
     case all = "all"
     case today = "today"
     case yesterday = "yesterday"
@@ -51,8 +52,7 @@ enum DateFilter: String, CaseIterable {
 }
 
 struct BillingListView: View {
-    let kInitialStartDate = Calendar.current.date(from: DateComponents(year: 2020, month: 1, day: 1)) ?? Date()
-    
+    @StateObject private var alertManager = AlertManager()
     @StateObject private var orgList = OrgListModel()
     @State private var isRefreshing = false
     @State private var refreshCompleted = false // 新增状态
@@ -64,24 +64,57 @@ struct BillingListView: View {
     @State private var endDateString: String = ""
     @State private var isStartDatePickerPresented = false
     @State private var isEndDatePickerPresented = false
+    @State private var savedUpdateTime = Date()
     @State private var startDate = Date() {
         didSet {
-            startDateString = startDate.yyyyMMddDateString
+            savedStartDate = startDate
         }
     }
-    @State private var endDate  = Date() {
+    @State private var endDate  = Date()
+    {
+       didSet {
+           savedEndDate = endDate
+       }
+    }
+    @State private var savedStartDate: Date?  {
         didSet {
-            endDateString = endDate.yyyyMMddDateString
+            if let savedStartDate = savedStartDate {
+                startDateString = savedStartDate.yyyyMMddDateString
+            } else {
+                startDateString = kInitialStartDate.yyyyMMddDateString
+            }
+            for idx in SharedUsers.indices {
+                SharedUsers[idx].customPeriodStartDate = savedStartDate
+            }
+            UserStorage.save(users: SharedUsers)
         }
     }
-    @State private var savedStartDate: Date?
-    @State private var savedEndDate: Date?
-    @StateObject private var alertManager = AlertManager()
-    @State private var selectedFilter: DateFilter = .all
+    @State private var savedEndDate: Date? {
+        didSet {
+            if let savedEndDate = savedEndDate {
+                endDateString = savedEndDate.yyyyMMddDateString
+            } else {
+                endDateString = Localized("until_now")
+            }
+            for idx in SharedUsers.indices {
+                SharedUsers[idx].customPeriodEndDate = savedEndDate
+            }
+            UserStorage.save(users: SharedUsers)
+        }
+    }
+    @State private var selectedFilter: DateFilter = .all {
+        didSet {
+            for idx in SharedUsers.indices {
+                SharedUsers[idx].period = selectedFilter
+            }
+            UserStorage.save(users: SharedUsers)
+        }
+    }
     @State private var lastSelectedFilter: DateFilter = .all
     @State private var isCustomDatePickerPresented = false
     @State private var isMenuOpen = false
     @State private var isExpanded = false
+    @State private var currentTask: Task<Void, Never>? = nil // 新增: 当前请求任务
     
     var body: some View {
         NavigationView {
@@ -142,8 +175,11 @@ struct BillingListView: View {
                                 withAnimation(.easeInOut(duration: 0.25)) {
                                     isCustomDatePickerPresented = false
                                 }
-                                selectedFilter = .all
-                                requestData()
+                                if lastSelectedFilter == .custom {
+                                    lastSelectedFilter = .all
+                                }
+                                selectedFilter = lastSelectedFilter
+                                performFilter(lastSelectedFilter, savedUpdateTime != orgList.updateTime ? true : false)
                             }) {
                                 Image(systemName: "arrowshape.turn.up.backward.fill")
                                     .resizable()
@@ -273,10 +309,11 @@ struct BillingListView: View {
                             .padding(20)
                     }
                     Spacer()
-                    let text = isRefreshing ? Localized("refreshing") : Localized("last_update_time") + orgList.updateTime.yyyyMMddhhmmssDateString2
+                    let title = orgList.isUpdateFail ? Localized("last_update_fail") : Localized("last_update_time")
+                    let text = isRefreshing ? Localized("refreshing") : title + orgList.updateTime.yyyyMMddhhmmssDateString2
                     Text(text)
                         .font(.system(size: 11))
-                        .foregroundColor(.main)
+                        .foregroundColor(orgList.isUpdateFail && refreshCompleted ? .red : .main)
                     Spacer()
                     RefreshButton(isRefreshing: $isRefreshing, refreshCompleted: $refreshCompleted, requestData: requestData)
                 }
@@ -313,7 +350,11 @@ struct BillingListView: View {
                                             isMenuOpen = false
                                         }
                                         
-                                        performFilter(filter)
+                                        if filter == .custom {
+                                            savedUpdateTime = orgList.updateTime
+                                        }
+                                        
+                                        performFilter(filter, filter != .custom ? true : false)
                                     }) {
                                         HStack {
                                             Text(filter.localized)
@@ -356,7 +397,7 @@ struct BillingListView: View {
                         
                             Spacer()
                         }
-                        .padding(.leading, AutoSize(90, 75))
+                        .padding(.leading, AutoSize(80, 65))
                         .padding(.top, 60)
                     }
                 }
@@ -364,9 +405,8 @@ struct BillingListView: View {
 
             .sheet(isPresented: $isStartDatePickerPresented) {
                 VStack {
-                    DatePicker(Localized("select_start_time"), selection: $startDate, in: ...Date(), displayedComponents: .date)
+                    DatePicker(Localized("select_start_time"), selection: $startDate, in: ...endDate, displayedComponents: .date)
                         .datePickerStyle(.graphical)
-                        .labelsHidden()
                         .environment(\.locale, Locale.preferredLanguages.first.map { Locale(identifier: $0) } ?? Locale.current)
                     HStack {
                         Button(Localized("reset")) {
@@ -378,8 +418,7 @@ struct BillingListView: View {
                         .padding()
                         Spacer()
                         Button(Localized("confirm")) {
-                            savedStartDate = startDate
-                            startDateString = startDate.yyyyMMddDateString
+                            startDate = startDate
                             isStartDatePickerPresented = false
                             // 日历变更后自动刷新
                             requestData()
@@ -392,23 +431,24 @@ struct BillingListView: View {
             }
             .sheet(isPresented: $isEndDatePickerPresented) {
                 VStack {
-                    DatePicker(Localized("select_end_time"), selection: $endDate, in: ...Date(), displayedComponents: .date)
+                    DatePicker(Localized("select_end_time"), selection: $endDate, in: startDate...Date(), displayedComponents: .date)
                         .datePickerStyle(.graphical)
-                        .labelsHidden()
                         .environment(\.locale, Locale.preferredLanguages.first.map { Locale(identifier: $0) } ?? Locale.current)
                     HStack {
                         Button(Localized("reset")) {
                             endDate = Date()
                             savedEndDate = nil
-                            endDateString = "至今"
                             isEndDatePickerPresented = false
                             requestData()
                         }
                         .padding()
                         Spacer()
                         Button(Localized("confirm")) {
-                            savedEndDate = endDate
-                            endDateString = endDate.yyyyMMddDateString
+                            let fixedEndDate = Calendar.current.date(bySettingHour: 23, minute: 59, second: 59, of: endDate) ?? Date()
+                            endDate = min(fixedEndDate, Date())
+                            if fixedEndDate > Date() {
+                                savedEndDate = nil
+                            }
                             isEndDatePickerPresented = false
                             // 日历变更后自动刷新
                             requestData()
@@ -435,12 +475,36 @@ struct BillingListView: View {
         .navigationBarHidden(true)
         .onAppear {
             if orgList.orgs.isEmpty && !isRefreshing {
-                requestData()
+                if let period = SharedUsers.first?.period {
+                    selectedFilter = period
+                    if period == .custom {
+                        isCustomDatePickerPresented = true
+                        if let start = SharedUsers.first?.customPeriodStartDate {
+                            startDate = start
+                            savedStartDate = startDate
+                        } else {
+                            startDate = kInitialStartDate
+                            savedStartDate = startDate
+                        }
+                        if let end = SharedUsers.first?.customPeriodEndDate {
+                            endDate = end
+                            savedEndDate = endDate
+                        } else {
+                            endDate = Date()
+                            savedEndDate = nil
+                        }
+                    }
+                } else {
+                    selectedFilter = .all
+                }
+                
+                performFilter(selectedFilter)
             }
         }
     }
     
     func requestData() {
+        currentTask?.cancel()
         withAnimation(.easeInOut(duration: 0.25)) {
             isRefreshing = true
         }
@@ -448,68 +512,152 @@ struct BillingListView: View {
 
         totalRequests = 0
         completedRequests = 0
-        let userCount = SharedUsers.count
-        totalRequests = Double(userCount) * 2 // getLicences + getStudies
+        currentTask = Task {
+            do {
+                let userCount = SharedUsers.count
+                var studies = [String: [StudyResponse]]()
+                if orgList.orgs.count > 0 {
+                    studies = Dictionary(uniqueKeysWithValues: orgList.orgs.map { ($0.name, $0.studies) })
+                } else {
+                    totalRequests = Double(userCount) // getLicences + getStudies
+                    // 启动动画定时器
+                    progressTimer?.invalidate()
+                    progressTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
+                        DispatchQueue.main.async {
+                            completedRequests += 0.002 * totalRequests
+                            if completedRequests >= totalRequests * 0.9 {
+                                progressTimer?.invalidate()
+                                progressTimer = nil
+                            }
+                        }
+                    }
 
-        // 启动动画定时器
-        progressTimer?.invalidate()
-        progressTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
-            DispatchQueue.main.async {
-                completedRequests += 0.002 * totalRequests
-                if completedRequests >= totalRequests * 0.9 {
+                    studies = try await APIClient.getStudies()
                     progressTimer?.invalidate()
                     progressTimer = nil
                 }
-            }
-        }
-
-        Task {
-            do {
-                var studies = try await getStudies()
+                
                 for orgName in studies.keys {
                     var orgStudies = studies[orgName] ?? []
                     if let user = SharedUsers.first(where: { $0.orgName == orgName }) {
                         for idx in orgStudies.indices {
                             if let unitPrice = user.studyUnitPrices?[orgStudies[idx].ID] {
                                 orgStudies[idx].unitPrice = unitPrice
+                            } else {
+                                orgStudies[idx].unitPrice = user.unitPrice
                             }
                         }
                     }
                     studies[orgName] = orgStudies
                 }
-                
                 let studyCount = studies.values.flatMap { $0 }.count
                 let progress = completedRequests / totalRequests
                 totalRequests += Double(studyCount) * (selectedFilter == .all ? 3 : 6)
                 completedRequests = progress * totalRequests
                 completedRequests = max(Double(userCount), completedRequests)
-                progressTimer?.invalidate()
-                progressTimer = nil
-
-                let licences = try await getLicences()
-                completedRequests += Double(userCount)
-                // 统计 updateStudies 需要的请求数
-                var studiesCopy = studies
-                try await updateStudies(&studiesCopy, progress: { completedRequests += 1 })
-                var studiesCopy2 = studies
-                if selectedFilter == .all {
-                    studiesCopy2 = studiesCopy
-                } else {
-                    try await updateStudies(&studiesCopy2, startDate, endDate, progress: { completedRequests += 1 })
+                var studiesCopy3 = [String: [StudyResponse]]()
+                var billingDateDic = [String: Date]()
+                for orgName in studies.keys {
+                    let orgStudies = studies[orgName] ?? []
+                    guard let user = SharedUsers.first(where: { $0.orgName == orgName }) else {
+                        continue
+                    }
+                    if user.billingDate != kInitialStartDate {
+                        studiesCopy3[orgName] = orgStudies
+                        billingDateDic[orgName] = user.billingDate
+                    }
+                }
+                if !studiesCopy3.isEmpty {
+                    totalRequests += Double(studiesCopy3.values.flatMap { $0 }.count) * 3
+                }
+                
+                var studiesCopy4 = [String: [StudyResponse]]()
+                for orgName in studies.keys {
+                    let orgStudies = studies[orgName] ?? []
+                    guard let user = SharedUsers.first(where: { $0.orgName == orgName }) else {
+                        continue
+                    }
+                    if user.billingDate > startDate && user.billingDate < endDate {
+                        studiesCopy4[orgName] = orgStudies
+                    } else {
+                        guard var studies1 = studies[orgName] else { continue }
+                        for idx in studies1.indices {
+                            if user.billingDate > endDate {
+                                studies1[idx].periodBillingSuccessMeasurements = 0
+                            } else {
+                                studies1[idx].periodBillingSuccessMeasurements = nil
+                            }
+                        }
+                        studies[orgName] = studies1
+                    }
+                }
+                
+                if !studiesCopy4.isEmpty {
+                    totalRequests += Double(studiesCopy4.values.flatMap { $0 }.count) * 3
                 }
 
+                var studiesCopy = studies
+                try await APIClient.updateStudies(&studiesCopy, nil, nil, nil, progress: { completedRequests += 1 })
+                var studiesCopy2 = studiesCopy
+                if selectedFilter != .all {
+                    try await APIClient.updateStudies(&studiesCopy2, nil, startDate, endDate, progress: { completedRequests += 1 })
+                }
+                
+                for (orgName, studies2) in studiesCopy2 {
+                    guard var studies1 = studiesCopy[orgName] else { continue }
+                    for study2 in studies2 {
+                        if let idx = studies1.firstIndex(where: { $0.ID == study2.ID }) {
+                            if selectedFilter != .all {
+                                studies1[idx].periodSuccessMeasurements = study2.totalSuccessMeasurements
+                            } else {
+                                studies1[idx].periodSuccessMeasurements = studies1[idx].totalSuccessMeasurements
+                            }
+                        }
+                    }
+                    studiesCopy[orgName] = studies1
+                }
+                
+                if !studiesCopy3.isEmpty {
+                    try await APIClient.updateStudies(&studiesCopy3, billingDateDic, nil, nil, progress: { completedRequests += 1 })
+                    for (orgName, studies3) in studiesCopy3 {
+                        guard var studies1 = studiesCopy[orgName] else { continue }
+                        for study3 in studies3 {
+                            if let idx = studies1.firstIndex(where: { $0.ID == study3.ID }) {
+                                studies1[idx].billingSuccessMeasurements = study3.totalSuccessMeasurements
+                            }
+                        }
+                        studiesCopy[orgName] = studies1
+                    }
+                }
+                
+                if !studiesCopy4.isEmpty {
+                    try await APIClient.updateStudies(&studiesCopy4, billingDateDic, nil, endDate, progress: { completedRequests += 1 })
+                    for (orgName, studies4) in studiesCopy4 {
+                        guard var studies1 = studiesCopy[orgName] else { continue }
+                        for study4 in studies4 {
+                            if let idx = studies1.firstIndex(where: { $0.ID == study4.ID }) {
+                                studies1[idx].periodBillingSuccessMeasurements = study4.totalSuccessMeasurements
+                            }
+                        }
+                        studiesCopy[orgName] = studies1
+                    }
+                }
+                
                 var orgs = [OrgInfo]()
                 for user in SharedUsers {
-                    let successCount = totalSuccessMeasurements(for: user, in: studiesCopy)
-                    let successCount2 = totalSuccessMeasurements(for: user, in: studiesCopy2)
-                    let org = OrgInfo(name: user.orgName,
-                                      successCount: successCount,
+                    let totalSuccessCount = totalSuccessMeasurements(for: user, in: studiesCopy)
+                    let periodSuccessCount = periodSuccessMeasurements(for: user, in: studiesCopy)
+                    let org = OrgInfo(region: user.region,
+                                      name: user.orgName,
+                                      successCount: totalSuccessCount,
                                       totalDeposits: user.deposits,
                                       unitPrice: user.unitPrice,
-                                      periodSuccess: successCount2,
-                                      licenses: licences[user.orgName] ?? [],
-                                      studies: studiesCopy[user.orgName] ?? [],
-                                      periodStudies: studiesCopy2[user.orgName] ?? [])
+                                      periodSuccess: periodSuccessCount,
+                                      billingDate: user.billingDate,
+                                      startDate: startDate,
+                                      endDate: endDate,
+                                      licenses: [],
+                                      studies: studiesCopy[user.orgName] ?? [])
                     orgs.append(org)
                 }
                 if isRefreshing {
@@ -523,37 +671,42 @@ struct BillingListView: View {
                     orgList.updateTime = Date()
                     orgList.billingName = Localized("bill_prefix") + orgList.updateTime.yyyyMMddhhmmssDateString
                 }
-            }catch {
-                print("getData error: \(error)")
+                orgList.isUpdateFail = false
+            } catch {
+                print("getData error: \(error.localizedDescription)")
                 if isRefreshing {
                     refreshCompleted = true // 即使失败也通知完成
                 }
+                orgList.updateTime = Date()
+                orgList.isUpdateFail = true
+                alertManager.showAlert(title: Localized("alert_title"), message: Localized("Error: \(error.localizedDescription)"))
             }
         }
     }
     
-    func performFilter(_ filter: DateFilter) {
+    func performFilter(_ filter: DateFilter, _ needRequest: Bool = true) {
+        // 计算时间区间
+        let now = Date()
+        var calendar = Calendar.current
+        calendar.firstWeekday = 2 // 强制一周从周一开始，其他国家可能是从周日开始
+
         if filter == .custom {
-            if lastSelectedFilter == .all {
-                startDate = kInitialStartDate
-                endDateString = "至今"
-            } else if lastSelectedFilter == .today {
-                endDateString = "至今"
+            if lastSelectedFilter == .all ||
+                lastSelectedFilter == .today ||
+                lastSelectedFilter == .thisWeek ||
+                lastSelectedFilter == .thisMonth ||
+                lastSelectedFilter == .halfYear ||
+                lastSelectedFilter == .oneYear {
+                savedEndDate = nil
             }
             withAnimation(.easeInOut(duration: 0.25)) {
                 isCustomDatePickerPresented = true
             }
         } else {
-            // 计算时间区间
-            let now = Date()
-            var calendar = Calendar.current
-            calendar.firstWeekday = 2 // 强制一周从周一开始，其他国家可能是从周日开始
             switch filter {
             case .all:
-                startDateString = ""
-                endDateString = ""
-                startDate = Date()
-                endDate = Date()
+                startDate = kInitialStartDate
+                endDate = now
             case .today:
                 let start = calendar.startOfDay(for: now)
                 startDate = start
@@ -572,10 +725,8 @@ struct BillingListView: View {
                 endDate = end
             case .thisWeek:
                 let weekStart = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: now)) ?? now
-                let weekEnd = calendar.date(byAdding: .day, value: 6, to: weekStart) ?? now
-                let endOfWeek = calendar.date(bySettingHour: 23, minute: 59, second: 59, of: weekEnd) ?? weekEnd
                 startDate = weekStart
-                endDate = endOfWeek
+                endDate = now
             case .lastWeek:
                 let weekStart = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: now)) ?? now
                 let lastWeekStart = calendar.date(byAdding: .day, value: -7, to: weekStart) ?? weekStart
@@ -609,108 +760,23 @@ struct BillingListView: View {
             default:
                 break
             }
+        }
+        if needRequest {
+            lastSelectedFilter = filter
             requestData()
         }
-        lastSelectedFilter = filter
     }
 }
 
 extension BillingListView {
     func totalSuccessMeasurements(for user: User, in studies: [String: [StudyResponse]]) -> Int {
         guard let studyArray = studies[user.orgName] else { return 0 }
-        return studyArray.compactMap { $0.successMeasurements }.reduce(0, +)
+        return studyArray.compactMap { $0.totalSuccessMeasurements }.reduce(0, +)
     }
     
-    // 修改 getLicences、getStudies、updateStudies 支持进度回调
-    func getLicences() async throws -> [String: [LicenseResponse]] {
-        var licensesDic = [String: [LicenseResponse]]()
-        var errors = [Error]()
-        await withTaskGroup(of: Result<(String, [LicenseResponse]), Error>.self) { group in
-            for user in SharedUsers {
-                group.addTask {
-                    do {
-                        let licenses = try await APIClient.getLicences(orgName: user.orgName, limit: 10)
-                        return .success((user.orgName, licenses))
-                    } catch {
-                        return .failure(error)
-                    }
-                }
-            }
-            for await result in group {
-                switch result {
-                case .success(let (orgName, licenses)):
-                    licensesDic[orgName] = licenses
-                case .failure(let error):
-                    errors.append(error)
-                }
-            }
-        }
-        if !errors.isEmpty {
-            throw errors.first!
-        }
-        return licensesDic
-    }
-
-    func getStudies() async throws -> [String: [StudyResponse]] {
-        var studiesDic = [String: [StudyResponse]]()
-        var errors = [Error]()
-        await withTaskGroup(of: Result<(String, [StudyResponse]), Error>.self) { group in
-            for user in SharedUsers {
-                group.addTask {
-                    do {
-                        let studies = try await APIClient.getStudies(orgName: user.orgName, limit: 20)
-                        return .success((user.orgName, studies))
-                    } catch {
-                        return .failure(error)
-                    }
-                }
-            }
-            for await result in group {
-                switch result {
-                case .success(let (orgName, studies)):
-                    studiesDic[orgName] = studies
-                case .failure(let error):
-                    errors.append(error)
-                }
-            }
-        }
-        if !errors.isEmpty {
-            throw errors.first!
-        }
-        return studiesDic
-    }
-
-    func updateStudies(_ studyDic: inout [String: [StudyResponse]], _ startDate: Date? = nil, _ endDate: Date? = nil, progress: @escaping () -> Void) async throws {
-        var dateStr: String? = nil
-        var endDateStr: String? = nil
-        if let startDate = startDate { dateStr = startDate.toUTCString() }
-        if let endDate = endDate { endDateStr = endDate.toUTCString() }
-        
-        for (orgName, studies) in studyDic {
-            var updatedStudies: [StudyResponse] = studies
-            await withTaskGroup(of: (Int, Int?, Int?).self) { group in
-                for (index, study) in studies.enumerated() {
-                    group.addTask {
-                        do {
-                            let info = try await APIClient.getMeasurementInfo(orgName: orgName, studyID: study.ID, date: dateStr, endDate: endDateStr, progress: progress)
-                            return (index, info.successCount, info.failCount)
-                        } catch {
-                            progress()
-                            return (index, nil, nil)
-                        }
-                    }
-                }
-                for await (index, successCount, failCount) in group {
-                    if let count = successCount {
-                        updatedStudies[index].successMeasurements = count
-                    }
-                    if let count = failCount {
-                        updatedStudies[index].failCount = count
-                    }
-                }
-            }
-            studyDic[orgName] = updatedStudies
-        }
+    func periodSuccessMeasurements(for user: User, in studies: [String: [StudyResponse]]) -> Int {
+        guard let studyArray = studies[user.orgName] else { return 0 }
+        return studyArray.compactMap { $0.periodSuccessMeasurements ?? $0.totalSuccessMeasurements }.reduce(0, +)
     }
 }
 
