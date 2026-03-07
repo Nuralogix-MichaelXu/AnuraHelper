@@ -8,6 +8,7 @@
 import SwiftUI
 
 struct User: Codable, Sendable {
+    let key: String
     let orgName: String
     let email: String
     let password: String
@@ -52,9 +53,15 @@ struct LoginView: View {
 //    @State private var email: String = "michaelxu@nuralogix.ai"
 //    @State private var password: String = "Xq1988050414132024!"
 //    @State private var multiAccountText: String = """
-//        support michaelxu@nuralogix.ai Xq1988050414132024! 20000 0.8 2020.01.01 0
-//        support michaelxu@nuralogix.ai Xq1988050414132024! 5000 1.2 2020.01.01 0
-//        support michaelxu@nuralogix.ai Xq1988050414132024! 3000 1.2 2020.01.01 1
+//        support michaelxu@nuralogix.ai Xq1988050414132024! 5000 1.0 2020.01.01 0
+//        support michaelxu@nuralogix.ai Xq1988050414132024! 3000 1.2 2020.01.01 0
+//        support michaelxu@nuralogix.ai Xq1988050414132024! 5000 1.0 2020.01.01 0
+//        support michaelxu@nuralogix.ai Xq1988050414132024! 3000 1.2 2020.01.01 0
+//        support michaelxu@nuralogix.ai Xq1988050414132024! 3000 1.2 2020.01.01 0
+//        support michaelxu@nuralogix.ai Xq1988050414132024! 3000 1.2 2020.01.01 0
+//        support michaelxu@nuralogix.ai Xq1988050414132024! 3000 1.2 2020.01.01 0
+//        support michaelxu@nuralogix.ai Xq1988050414132024! 3000 1.2 2020.01.01 0
+//        support michaelxu@nuralogix.ai Xq1988050414132024! 3000 1.2 2020.01.01 0
 //        """
     @State private var orgName: String = ""
     @State private var email: String = ""
@@ -62,7 +69,11 @@ struct LoginView: View {
     @State private var multiAccountText: String = ""
     
     @State private var region: Region = .china
-    @State private var isMultiAccountMode: Bool = false
+    @State private var isMultiAccountMode: Bool = false {
+        didSet {
+            UserDefaults.standard.set(isMultiAccountMode, forKey: "isMultiAccountMode")
+        }
+    }
     @State private var isBillingListActive = false
     @StateObject private var alertManager = AlertManager()
     @ObservedObject private var langManager = LanguageManager.shared // 新增，监听语言变化
@@ -159,6 +170,9 @@ struct LoginView: View {
             }
         }
         .id(langManager.currentLanguage) // 关键：语言变化时刷新整个视图
+        .onAppear {
+            isMultiAccountMode = UserDefaults.standard.bool(forKey: "isMultiAccountMode")
+        }
     }
     
     func resignFirstResponder() {
@@ -174,7 +188,8 @@ struct LoginView: View {
         }
         var users = [User]()
         if !isMultiAccountMode {
-            let user = User(orgName: orgName,
+            let user = User(key: orgName + region.tag,
+                            orgName: orgName,
                             email: email,
                             password: password,
                             region: region,
@@ -194,7 +209,8 @@ struct LoginView: View {
                     let unitPrice = Double(components[4]) ?? 1.0
                     let billingDate = String(components[5]).dateFromYyyyMMddString ?? kInitialStartDate
                     let region = Region(rawValue: Int(components[6]) ?? 0) ?? .china
-                    let user = User(orgName: org,
+                    let user = User(key: org + region.tag,
+                                    orgName: org,
                                     email: email,
                                     password: password,
                                     region: region,
@@ -212,14 +228,13 @@ struct LoginView: View {
         Task {
             var loginResults = [Result<LoginResponse, Error>]()
             var updatedUsers = [User]()
-            var tag: Int = 0 // Test code
             await withTaskGroup(of: Result<(User, LoginResponse), Error>.self) { group in
                 for user in users {
                     group.addTask {
                         do {
                             let response = try await APIClient.login(email: user.email, password: user.password, org: user.orgName, region: user.region)
-                            tag += 1
-                            let updateUser = User(orgName: user.orgName,
+                            let updateUser = User(key: user.orgName + "\(user.region.rawValue)",
+                                                  orgName: user.orgName,
                                                   email: user.email,
                                                   password: user.password,
                                                   region: user.region,
@@ -250,9 +265,15 @@ struct LoginView: View {
                     return
                 }
             }
+
             // 全部成功，主线程赋值
             await MainActor.run {
-                SharedUsers = updatedUsers
+                for idx in users.indices {
+                    let user = users[idx]
+                    if let updateUser = updatedUsers.first(where: { $0.key == user.key }) {
+                        SharedUsers.append(updateUser)
+                    }
+                }
                 UserStorage.save(users: updatedUsers)
                 isBillingListActive = true
                 isLoading = false

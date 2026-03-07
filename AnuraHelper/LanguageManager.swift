@@ -11,9 +11,6 @@ class LanguageManager: ObservableObject {
         } else {
             currentLanguage = Locale.preferredLanguages.first?.contains("zh") == true ? "zh-Hans" : "en"
         }
-        
-        currentLanguage = "zh-Hans" // 强制设置为中文
-//        currentLanguage = "en" // 强制设置为英文
     }
     func setLanguage(_ lang: String) {
         currentLanguage = lang

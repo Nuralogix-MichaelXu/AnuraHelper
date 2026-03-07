@@ -3,6 +3,7 @@ import SwiftUI
 
 struct OrgInfo: Identifiable {
     let id = UUID()
+    var key: String
     let region: Region
     let name: String
     let successCount: Int
@@ -12,12 +13,8 @@ struct OrgInfo: Identifiable {
     var billingDate: Date
     var startDate: Date
     var endDate: Date
-    let licenses: [LicenseResponse]
     var studies: [StudyResponse]
-    
-    var licenseCount: Int {
-        return licenses.count
-    }
+
     var studyCount: Int {
         return studies.count
     }
@@ -187,8 +184,12 @@ struct StudyResponse: Codable {
     var totalFailMeasurements: Int?
     var periodFailMeasurements: Int?
     var billingFailMeasurements: Int?
+    var isPerioContainBilling: Bool?
     var unitPrice: Double?
     var periodCost: Double {
+        if let isPerioContainBilling = isPerioContainBilling, isPerioContainBilling {
+            return (unitPrice ?? 0) * Double(billingSuccessMeasurements ?? 0)
+        }
         let periodSuccessMeasurements = periodBillingSuccessMeasurements ?? periodSuccessMeasurements ?? totalSuccessMeasurements ?? 0
         return (unitPrice ?? 0) * Double(periodSuccessMeasurements)
     }

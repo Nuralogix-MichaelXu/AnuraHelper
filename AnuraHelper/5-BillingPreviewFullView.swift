@@ -102,8 +102,9 @@ struct BillingPreviewFullView: View {
     let orgs1: OrgListModel = {
         let orgs1 = OrgListModel()
         let org = OrgInfo(
+            key: "1110",
             region: .china,
-            name: "",
+            name: "111",
             successCount: 0,
             totalDeposits: 0,
             unitPrice: 1,
@@ -111,7 +112,6 @@ struct BillingPreviewFullView: View {
             billingDate: Date(),
             startDate: Date(),
             endDate: Date(),
-            licenses: [LicenseResponse(Created: 123132323, StatusID: "111", Expiration: "1231231123", MaxDevices: 34, Key: "121212121", DeviceRegistrations: 23, LicenseType: "2")],
             studies: [],
         )
         orgs1.orgs = [org, org]

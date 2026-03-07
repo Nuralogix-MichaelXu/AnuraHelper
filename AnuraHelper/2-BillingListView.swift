@@ -49,6 +49,18 @@ enum DateFilter: String, CaseIterable, Codable {
             return self.localized
         }
     }
+    
+    var endDateIsNow: Bool {
+        if self == .all ||
+            self == .today ||
+            self == .thisWeek ||
+            self == .thisMonth ||
+            self == .halfYear ||
+            self == .oneYear {
+            return true
+        }
+        return false
+    }
 }
 
 struct BillingListView: View {
@@ -260,7 +272,8 @@ struct BillingListView: View {
                         ProgressView(value: min(max(completedRequests, 0), totalRequests), total: totalRequests)
                             .progressViewStyle(LinearProgressViewStyle(tint: .green))
                             .frame(height: 8)
-                        Text("\(Int(min(max(completedRequests, 0), totalRequests) / totalRequests * 100))%")
+                        let progress = totalRequests == 0 ? 0 : Int(min(max(completedRequests, 0), totalRequests) / totalRequests * 100)
+                        Text("\(progress)%")
                             .font(.system(size: 10, weight: .medium))
                             .foregroundColor(.green)
                             .frame(alignment: .trailing)
@@ -297,6 +310,7 @@ struct BillingListView: View {
                 HStack {
                     Button(action: {
                         alertManager.showAlert(title: Localized("alert_title"), message: Localized("alert_logout_confirm")) {
+                            currentTask?.cancel()
                             presentationMode.wrappedValue.dismiss()
                             SharedUsers.removeAll()
                             UserStorage.clear()
@@ -517,7 +531,9 @@ struct BillingListView: View {
                 let userCount = SharedUsers.count
                 var studies = [String: [StudyResponse]]()
                 if orgList.orgs.count > 0 {
-                    studies = Dictionary(uniqueKeysWithValues: orgList.orgs.map { ($0.name, $0.studies) })
+                    for org in orgList.orgs {
+                        studies[org.key] = org.studies
+                    }
                 } else {
                     totalRequests = Double(userCount) // getLicences + getStudies
                     // 启动动画定时器
@@ -537,9 +553,9 @@ struct BillingListView: View {
                     progressTimer = nil
                 }
                 
-                for orgName in studies.keys {
-                    var orgStudies = studies[orgName] ?? []
-                    if let user = SharedUsers.first(where: { $0.orgName == orgName }) {
+                for key in studies.keys {
+                    var orgStudies = studies[key] ?? []
+                    if let user = SharedUsers.first(where: { $0.key == key }) {
                         for idx in orgStudies.indices {
                             if let unitPrice = user.studyUnitPrices?[orgStudies[idx].ID] {
                                 orgStudies[idx].unitPrice = unitPrice
@@ -548,23 +564,21 @@ struct BillingListView: View {
                             }
                         }
                     }
-                    studies[orgName] = orgStudies
+                    studies[key] = orgStudies
                 }
                 let studyCount = studies.values.flatMap { $0 }.count
-                let progress = completedRequests / totalRequests
+                let progress = totalRequests == 0 ? 0 : completedRequests / totalRequests
                 totalRequests += Double(studyCount) * (selectedFilter == .all ? 3 : 6)
-                completedRequests = progress * totalRequests
-                completedRequests = max(Double(userCount), completedRequests)
                 var studiesCopy3 = [String: [StudyResponse]]()
                 var billingDateDic = [String: Date]()
-                for orgName in studies.keys {
-                    let orgStudies = studies[orgName] ?? []
-                    guard let user = SharedUsers.first(where: { $0.orgName == orgName }) else {
+                for key in studies.keys {
+                    let orgStudies = studies[key] ?? []
+                    guard let user = SharedUsers.first(where: { $0.key == key }) else {
                         continue
                     }
                     if user.billingDate != kInitialStartDate {
-                        studiesCopy3[orgName] = orgStudies
-                        billingDateDic[orgName] = user.billingDate
+                        studiesCopy3[key] = orgStudies
+                        billingDateDic[key] = user.billingDate
                     }
                 }
                 if !studiesCopy3.isEmpty {
@@ -572,15 +586,23 @@ struct BillingListView: View {
                 }
                 
                 var studiesCopy4 = [String: [StudyResponse]]()
-                for orgName in studies.keys {
-                    let orgStudies = studies[orgName] ?? []
-                    guard let user = SharedUsers.first(where: { $0.orgName == orgName }) else {
+                for key in studies.keys {
+                    let orgStudies = studies[key] ?? []
+                    guard let user = SharedUsers.first(where: { $0.key == key }) else {
                         continue
                     }
                     if user.billingDate > startDate && user.billingDate < endDate {
-                        studiesCopy4[orgName] = orgStudies
+                        if lastSelectedFilter.endDateIsNow {
+                            guard var studies1 = studies[key] else { continue }
+                            for idx in studies1.indices {
+                                studies1[idx].isPerioContainBilling = true
+                            }
+                            studies[key] = studies1
+                        } else {
+                            studiesCopy4[key] = orgStudies
+                        }
                     } else {
-                        guard var studies1 = studies[orgName] else { continue }
+                        guard var studies1 = studies[key] else { continue }
                         for idx in studies1.indices {
                             if user.billingDate > endDate {
                                 studies1[idx].periodBillingSuccessMeasurements = 0
@@ -588,7 +610,7 @@ struct BillingListView: View {
                                 studies1[idx].periodBillingSuccessMeasurements = nil
                             }
                         }
-                        studies[orgName] = studies1
+                        studies[key] = studies1
                     }
                 }
                 
@@ -596,15 +618,21 @@ struct BillingListView: View {
                     totalRequests += Double(studiesCopy4.values.flatMap { $0 }.count) * 3
                 }
 
-                var studiesCopy = studies
-                try await APIClient.updateStudies(&studiesCopy, nil, nil, nil, progress: { completedRequests += 1 })
-                var studiesCopy2 = studiesCopy
-                if selectedFilter != .all {
-                    try await APIClient.updateStudies(&studiesCopy2, nil, startDate, endDate, progress: { completedRequests += 1 })
+                completedRequests = progress * totalRequests
+                var factor = (1 - progress)
+                if orgList.orgs.count == 0 {
+                    factor *= totalRequests / (totalRequests - Double(userCount)) * 1.02
                 }
                 
-                for (orgName, studies2) in studiesCopy2 {
-                    guard var studies1 = studiesCopy[orgName] else { continue }
+                var studiesCopy = studies
+                try await APIClient.updateStudies(&studiesCopy, nil, nil, nil, progress: { completedRequests += 1 * factor })
+                var studiesCopy2 = studiesCopy
+                if selectedFilter != .all {
+                    try await APIClient.updateStudies(&studiesCopy2, nil, startDate, endDate, progress: { completedRequests += 1 * factor })
+                }
+                
+                for (key, studies2) in studiesCopy2 {
+                    guard var studies1 = studiesCopy[key] else { continue }
                     for study2 in studies2 {
                         if let idx = studies1.firstIndex(where: { $0.ID == study2.ID }) {
                             if selectedFilter != .all {
@@ -614,32 +642,32 @@ struct BillingListView: View {
                             }
                         }
                     }
-                    studiesCopy[orgName] = studies1
+                    studiesCopy[key] = studies1
                 }
                 
                 if !studiesCopy3.isEmpty {
-                    try await APIClient.updateStudies(&studiesCopy3, billingDateDic, nil, nil, progress: { completedRequests += 1 })
-                    for (orgName, studies3) in studiesCopy3 {
-                        guard var studies1 = studiesCopy[orgName] else { continue }
+                    try await APIClient.updateStudies(&studiesCopy3, billingDateDic, nil, nil, progress: { completedRequests += 1 * factor })
+                    for (key, studies3) in studiesCopy3 {
+                        guard var studies1 = studiesCopy[key] else { continue }
                         for study3 in studies3 {
                             if let idx = studies1.firstIndex(where: { $0.ID == study3.ID }) {
                                 studies1[idx].billingSuccessMeasurements = study3.totalSuccessMeasurements
                             }
                         }
-                        studiesCopy[orgName] = studies1
+                        studiesCopy[key] = studies1
                     }
                 }
                 
                 if !studiesCopy4.isEmpty {
-                    try await APIClient.updateStudies(&studiesCopy4, billingDateDic, nil, endDate, progress: { completedRequests += 1 })
-                    for (orgName, studies4) in studiesCopy4 {
-                        guard var studies1 = studiesCopy[orgName] else { continue }
+                    try await APIClient.updateStudies(&studiesCopy4, billingDateDic, nil, endDate, progress: { completedRequests += 1 * factor })
+                    for (key, studies4) in studiesCopy4 {
+                        guard var studies1 = studiesCopy[key] else { continue }
                         for study4 in studies4 {
                             if let idx = studies1.firstIndex(where: { $0.ID == study4.ID }) {
                                 studies1[idx].periodBillingSuccessMeasurements = study4.totalSuccessMeasurements
                             }
                         }
-                        studiesCopy[orgName] = studies1
+                        studiesCopy[key] = studies1
                     }
                 }
                 
@@ -647,7 +675,8 @@ struct BillingListView: View {
                 for user in SharedUsers {
                     let totalSuccessCount = totalSuccessMeasurements(for: user, in: studiesCopy)
                     let periodSuccessCount = periodSuccessMeasurements(for: user, in: studiesCopy)
-                    let org = OrgInfo(region: user.region,
+                    let org = OrgInfo(key: user.orgName + user.region.tag,
+                                      region: user.region,
                                       name: user.orgName,
                                       successCount: totalSuccessCount,
                                       totalDeposits: user.deposits,
@@ -656,8 +685,7 @@ struct BillingListView: View {
                                       billingDate: user.billingDate,
                                       startDate: startDate,
                                       endDate: endDate,
-                                      licenses: [],
-                                      studies: studiesCopy[user.orgName] ?? [])
+                                      studies: studiesCopy[user.key] ?? [])
                     orgs.append(org)
                 }
                 if isRefreshing {
@@ -673,13 +701,15 @@ struct BillingListView: View {
                 }
                 orgList.isUpdateFail = false
             } catch {
-                print("getData error: \(error.localizedDescription)")
                 if isRefreshing {
                     refreshCompleted = true // 即使失败也通知完成
                 }
                 orgList.updateTime = Date()
                 orgList.isUpdateFail = true
-                alertManager.showAlert(title: Localized("alert_title"), message: Localized("Error: \(error.localizedDescription)"))
+                if SharedUsers.count != 0 {
+                    print("getData error: \(error.localizedDescription)")
+                    alertManager.showAlert(title: Localized("alert_title"), message: Localized("Error: \(error.localizedDescription)"))
+                }
             }
         }
     }
@@ -691,12 +721,7 @@ struct BillingListView: View {
         calendar.firstWeekday = 2 // 强制一周从周一开始，其他国家可能是从周日开始
 
         if filter == .custom {
-            if lastSelectedFilter == .all ||
-                lastSelectedFilter == .today ||
-                lastSelectedFilter == .thisWeek ||
-                lastSelectedFilter == .thisMonth ||
-                lastSelectedFilter == .halfYear ||
-                lastSelectedFilter == .oneYear {
+            if lastSelectedFilter.endDateIsNow {
                 savedEndDate = nil
             }
             withAnimation(.easeInOut(duration: 0.25)) {
@@ -770,12 +795,12 @@ struct BillingListView: View {
 
 extension BillingListView {
     func totalSuccessMeasurements(for user: User, in studies: [String: [StudyResponse]]) -> Int {
-        guard let studyArray = studies[user.orgName] else { return 0 }
+        guard let studyArray = studies[user.key] else { return 0 }
         return studyArray.compactMap { $0.totalSuccessMeasurements }.reduce(0, +)
     }
     
     func periodSuccessMeasurements(for user: User, in studies: [String: [StudyResponse]]) -> Int {
-        guard let studyArray = studies[user.orgName] else { return 0 }
+        guard let studyArray = studies[user.key] else { return 0 }
         return studyArray.compactMap { $0.periodSuccessMeasurements ?? $0.totalSuccessMeasurements }.reduce(0, +)
     }
 }

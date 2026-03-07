@@ -50,7 +50,7 @@ struct BillingDetailView: View {
                                             showDepositsAlert = true
                                         }
                                 }
-                                Spacer(minLength: 0)
+                                Spacer()
                                 HStack(spacing: 0) {
                                     Text(Localized("unit_price_label") + ": ")
                                         .font(.system(size: 12))
@@ -80,7 +80,7 @@ struct BillingDetailView: View {
                                         .font(.system(size: 12))
                                         .foregroundColor(.text)
                                 }
-                                Spacer(minLength: 0)
+                                Spacer()
                                 HStack(spacing: 0) {
                                     Text(Localized("balance_label") + ": ")
                                         .font(.system(size: 12))
@@ -119,6 +119,14 @@ struct BillingDetailView: View {
                                     }
                                 }
                                 Spacer()
+                                HStack(spacing: 0) {
+                                    Text(Localized("region_label") + ": ")
+                                        .font(.system(size: 12))
+                                        .foregroundColor(.text)
+                                    Text(org.region.name)
+                                        .font(.system(size: 12))
+                                        .foregroundColor(.text)
+                                }
                             }
                         }
                         .padding(.top, 35)
@@ -137,61 +145,18 @@ struct BillingDetailView: View {
                         .padding(.horizontal, 20)
                         .padding(.bottom, 20)
                         
+                        HStack(alignment: .bottom) {
+                            Text(Localized("study_table_title"))
+                                .font(.system(size: 12, weight: .medium))
+                                .padding(.vertical, 10)
+                            Spacer()
+                        }
+                        .padding(.horizontal, 20)
+                        .background(Color(UIColor.systemGray6))
+
                         ScrollView(.vertical, showsIndicators: false) {
-                            if !org.licenses.isEmpty {
-                                // 许可证表格
-                                VStack(spacing: 0) {
-                                    HStack {
-                                        Text(Localized("license_table_title"))
-                                            .font(.system(size: 12, weight: .medium))
-                                            .padding(.vertical, 10)
-                                        Spacer()
-                                    }
-                                    .padding(.horizontal, 20)
-                                    .background(Color(UIColor.systemGray6))
-                                    
-                                    ScrollView(.horizontal, showsIndicators: false) {
-                                        VStack(spacing: 0) {
-                                            HStack(alignment: .bottom, spacing: 0) {
-                                                Text(Localized("created_date")).frame(width: 70, alignment: .leading)
-                                                Text(Localized("license_type")).frame(width: AutoSize(50, 65), alignment: .leading)
-                                                Text(Localized("device_registration")).frame(width: AutoSize(75, 85), alignment: .leading)
-                                                Text(Localized("status")).frame(width: 50, alignment: .leading)
-                                                Text(Localized("expiration")).frame(width: AutoSize(65, 95), alignment: .leading)
-                                                Text(Localized("license_key")).frame(width: 60, alignment: .leading)
-                                            }
-                                            .font(.system(size: 8, weight: .medium))
-                                            .foregroundColor(.text)
-                                            .padding(.top, 12)
-                                            .padding(.bottom, 4)
-                                            .padding(.horizontal, 20)
-                                            .background(Color.white)
-                                            ForEach(licenses.indices, id: \ .self) { idx in
-                                                LicenseRowView(license: licenses[idx])
-                                                if idx != licenses.count - 1 {
-                                                    Divider()
-                                                        .background(Color(UIColor.systemGray5))
-                                                        .padding(.horizontal, 20)
-                                                }
-                                            }
-                                        }
-                                    }
-                                    .enableSwipeBack()
-                                }
-                                .background(Color.white)
-                            }
-                            
                             // 研究表格
                             VStack(spacing: 0) {
-                                HStack(alignment: .bottom) {
-                                    Text(Localized("study_table_title"))
-                                        .font(.system(size: 12, weight: .medium))
-                                        .padding(.vertical, 10)
-                                    Spacer()
-                                }
-                                .padding(.horizontal, 20)
-                                .background(Color(UIColor.systemGray6))
-                                
                                 ScrollView(.horizontal, showsIndicators: false) {
                                     VStack(spacing: 0) {
                                         HStack(spacing: 0) {
@@ -371,12 +336,12 @@ struct BillingDetailView: View {
         currentTask?.cancel()
         currentTask = Task {
             do {
-                var studiesDic = [org.name: org.studies]
-                let billingDateDic = [org.name: org.billingDate]
+                var studiesDic = [org.key: org.studies]
+                let billingDateDic = [org.key: org.billingDate]
                 
                 if org.billingDate > org.startDate && org.billingDate < org.endDate {
                     try await APIClient.updateStudies(&studiesDic, billingDateDic, nil, org.endDate, progress: {} )
-                    for study in studiesDic[org.name]! {
+                    for study in studiesDic[org.key]! {
                         if let idx = org.studies.firstIndex(where: { $0.ID == study.ID }) {
                             org.studies[idx].periodBillingSuccessMeasurements = study.totalSuccessMeasurements
                         }
@@ -393,7 +358,7 @@ struct BillingDetailView: View {
                 }
 
                 try await APIClient.updateStudies(&studiesDic, billingDateDic, nil, nil, progress: {} )
-                for study in studiesDic[org.name]! {
+                for study in studiesDic[org.key]! {
                     if let idx = org.studies.firstIndex(where: { $0.ID == study.ID }) {
                         org.studies[idx].billingSuccessMeasurements = study.totalSuccessMeasurements
                     }
@@ -407,27 +372,6 @@ struct BillingDetailView: View {
         }
     }
     
-}
-
-// MARK: - 子视图优化
-private struct LicenseRowView: View {
-    let license: LicenseResponse
-    var body: some View {
-        HStack(spacing: 0) {
-            Text(license.createdDateString).frame(width: 70, alignment: .leading)
-            Text(license.LicenseType).frame(width: AutoSize(50, 65), alignment: .leading)
-            Text(license.DeviceRegistrationString).frame(width: AutoSize(75, 85), alignment: .leading)
-            Text(license.statusString).frame(width: 50, alignment: .leading)
-            Text(license.expirationString).frame(width: AutoSize(65, 95), alignment: .leading)
-            Text(license.encryptedKey).frame(width: 60, alignment: .leading)
-        }
-        .font(.system(size: 8))
-        .foregroundColor(.text)
-        .padding(.vertical, 6)
-        .padding(.horizontal, 0)
-        .background(Color.white)
-        .lineLimit(1)
-    }
 }
 
 private struct StudyRowView: View {
@@ -498,7 +442,7 @@ private struct StudySummaryRowView: View {
             Text(formatAmount(totalPeriodSuccessCost)).frame(width: AutoSize(65, 75), alignment: .leading)
                 .foregroundColor(isPeriodCostHighlight ? .orange : .text)
             Text("\(totalSuccessCount)").frame(width: AutoSize(60, 80), alignment: .leading)
-            Text(formatAmount(totalCost)).frame(width: 55, alignment: .leading)
+            Text(formatAmount(totalCost)).frame(width: AutoSize(55, 60), alignment: .leading)
                 .foregroundColor(isCostHighlight ? .orange : .text)
             Text("\(totalPeriodFailCount)").frame(width: 60, alignment: .leading)
             Text("\(totalFailCount)").frame(width: AutoSize(50, 60), alignment: .leading)
@@ -514,7 +458,6 @@ private struct StudySummaryRowView: View {
 
 extension BillingDetailView {
     private var studies: [StudyResponse] { org.studies }
-    private var licenses: [LicenseResponse] { org.licenses }
     private var totalPeriodSuccessCount: Int {
         studies.reduce(0) { $0 + ($1.periodSuccessMeasurements ?? $1.totalSuccessMeasurements ?? 0) }
     }
@@ -582,6 +525,7 @@ extension View {
 #Preview {
     BillingDetailView(org:
             .constant(OrgInfo(
+                key: "1110",
                 region: .china,
                 name: "111",
                 successCount: 200,
@@ -591,15 +535,6 @@ extension View {
                 billingDate: Date(),
                 startDate: Date(),
                 endDate: Date(),
-                licenses:[
-                    LicenseResponse(Created: 123132323,
-                                          StatusID: "111",
-                                          Expiration: "1231231123",
-                                          MaxDevices: 34,
-                                          Key: "121212121",
-                                          DeviceRegistrations: 23,
-                                          LicenseType: "2")
-                ],
                 studies:[
                     StudyResponse(Created: 123132323,
                                   ID: "lkjghjajjsdjsjkd",

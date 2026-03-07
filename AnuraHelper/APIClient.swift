@@ -21,6 +21,10 @@ enum Region: Int, Codable {
             return Localized("region_international")
         }
     }
+    
+    var tag: String {
+        return "\(rawValue)"
+    }
 }
 
 // MARK: - HTTP Method Enum
@@ -45,36 +49,6 @@ struct APIRequest {
 }
 
 extension APIClient {
-    // 修改 getLicences、getStudies、updateStudies 支持进度回调
-    static func getLicences() async throws -> [String: [LicenseResponse]] {
-        var licensesDic = [String: [LicenseResponse]]()
-        var errors = [Error]()
-        await withTaskGroup(of: Result<(String, [LicenseResponse]), Error>.self) { group in
-            for user in SharedUsers {
-                group.addTask {
-                    do {
-                        let licenses = try await APIClient.getLicences(orgName: user.orgName, region: user.region, limit: 10)
-                        return .success((user.orgName, licenses))
-                    } catch {
-                        return .failure(error)
-                    }
-                }
-            }
-            for await result in group {
-                switch result {
-                case .success(let (orgName, licenses)):
-                    licensesDic[orgName] = licenses
-                case .failure(let error):
-                    errors.append(error)
-                }
-            }
-        }
-        if !errors.isEmpty {
-            throw errors.first!
-        }
-        return licensesDic
-    }
-
     static func getStudies() async throws -> [String: [StudyResponse]] {
         var studiesDic = [String: [StudyResponse]]()
         var errors = [Error]()
@@ -83,7 +57,7 @@ extension APIClient {
                 group.addTask {
                     do {
                         let studies = try await APIClient.getStudies(orgName: user.orgName, region: user.region, limit: 20)
-                        return .success((user.orgName, studies))
+                        return .success((user.orgName + "\(user.region.rawValue)", studies))
                     } catch {
                         return .failure(error)
                     }
@@ -110,17 +84,26 @@ extension APIClient {
         if let startDate = startDate { dateStr = startDate.toUTCString() }
         if let endDate = endDate { endDateStr = endDate.toUTCString() }
         
-        for (orgName, studies) in studyDic {
+        for (key, studies) in studyDic {
             var updatedStudies: [StudyResponse] = studies
-            let startDateStr = billingDateDic?[orgName]?.toUTCString() ?? dateStr
-            let region = SharedUsers.first(where: { $0.orgName == orgName })?.region ?? .china
+            let startDateStr = billingDateDic?[key]?.toUTCString() ?? dateStr
+            let region = SharedUsers.first(where: { $0.key == key })?.region ?? .china
+            let orgName = SharedUsers.first(where: { $0.key == key })?.orgName ?? ""
+
+            var nextIndex = 0
             try await withThrowingTaskGroup(of: (Int, Int?, Int?).self) { group in
-                for (index, study) in studies.enumerated() {
+                // 先启动最多2个任务
+                while nextIndex < min(10, studies.count) {
+                    let index = nextIndex
+                    let study = studies[index]
                     group.addTask {
                         let info = try await APIClient.getMeasurementInfo(orgName: orgName, region: region, studyID: study.ID, date: startDateStr, endDate: endDateStr, progress: progress)
                         return (index, info.successCount, info.failCount)
                     }
+                    nextIndex += 1
                 }
+
+                // 每有一个任务完成就补充一个新任务
                 for try await (index, successCount, failCount) in group {
                     if let count = successCount {
                         updatedStudies[index].totalSuccessMeasurements = count
@@ -128,12 +111,20 @@ extension APIClient {
                     if let count = failCount {
                         updatedStudies[index].totalFailMeasurements = count
                     }
+                    if nextIndex < studies.count {
+                        let indexToAdd = nextIndex
+                        let study = studies[indexToAdd]
+                        group.addTask {
+                            let info = try await APIClient.getMeasurementInfo(orgName: orgName, region: region, studyID: study.ID, date: startDateStr, endDate: endDateStr, progress: progress)
+                            return (indexToAdd, info.successCount, info.failCount)
+                        }
+                        nextIndex += 1
+                    }
                 }
             }
-            studyDic[orgName] = updatedStudies
+            studyDic[key] = updatedStudies
         }
     }
-
 }
 
 // MARK: - APIClient Extension (Login)
@@ -163,8 +154,8 @@ extension APIClient {
             method: .get,
             urlParameters: urlParameters,
             body: nil,
-            headers: authHeader(orgName),
-            orgName: orgName
+            headers: authHeader(orgName + region.tag),
+            key: orgName + region.tag
         )
         return try JSONDecoder().decode([LicenseResponse].self, from: data)
     }
@@ -177,31 +168,39 @@ extension APIClient {
             method: .get,
             urlParameters: urlParameters,
             body: nil,
-            headers: authHeader(orgName),
-            orgName: orgName
+            headers: authHeader(orgName + region.tag),
+            key: orgName + region.tag
         )
         return try JSONDecoder().decode([StudyResponse].self, from: data)
     }
     
     static func getMeasurements(orgName: String, region: Region, studyID: String, statusID: String? = nil, date: String? = nil, endDate: String? = nil) async throws -> [MeasurementResponse] {
-        var urlParameters: [String: Any] = ["Limit": 1,
-                                            "StudyID": studyID]
-        if let date = date { urlParameters["Date"] = date }
-        if let endDate = endDate { urlParameters["EndDate"] = endDate }
-        if let statusID = statusID { urlParameters["StatusID"] = statusID }
-        let data = try await APIClient.shared.sendRequestWithTokenRefresh(
-            urlString: region.host + "/organizations/measurements",
-            method: .get,
-            urlParameters: urlParameters,
-            body: nil,
-            headers: authHeader(orgName),
-            orgName: orgName
-        )
-        if let dataString = String(data: data, encoding: .utf8), dataString.isEmpty {
-            print("111111")
-            return []
-        } else {
+        return try await getMeasurementsWithRetry(orgName: orgName, region: region, studyID: studyID, statusID: statusID, date: date, endDate: endDate, retryCount: 0)
+    }
+    
+    /// 带重试的 getMeasurements，最大重试5次
+    private static func getMeasurementsWithRetry(orgName: String, region: Region, studyID: String, statusID: String? = nil, date: String? = nil, endDate: String? = nil, retryCount: Int) async throws -> [MeasurementResponse] {
+        do {
+            var urlParameters: [String: Any] = ["Limit": 1,
+                                                "StudyID": studyID]
+            if let date = date { urlParameters["Date"] = date }
+            if let endDate = endDate { urlParameters["EndDate"] = endDate }
+            if let statusID = statusID { urlParameters["StatusID"] = statusID }
+            let data = try await APIClient.shared.sendRequestWithTokenRefresh(
+                urlString: region.host + "/organizations/measurements",
+                method: .get,
+                urlParameters: urlParameters,
+                body: nil,
+                headers: authHeader(orgName + region.tag),
+                key: orgName + region.tag
+            )
             return try JSONDecoder().decode([MeasurementResponse].self, from: data)
+        } catch {
+            if (error is DecodingError) && retryCount < 100  {
+                return try await getMeasurementsWithRetry(orgName: orgName, region: region, studyID: studyID, statusID: statusID, date: date, endDate: endDate, retryCount: retryCount + 1)
+            } else {
+                throw error
+            }
         }
     }
     
@@ -221,10 +220,10 @@ extension APIClient {
     }
 
     
-    static func authHeader(_ orgName: String) async throws -> [String: String] {
+    static func authHeader(_ key: String) async throws -> [String: String] {
         // 优先从SharedUsers获取token
-        let token = SharedUsers.first(where: { $0.orgName == orgName })?.token
-            ?? UserStorage.load().first(where: { $0.orgName == orgName })?.token
+        let token = SharedUsers.first(where: { $0.key == key })?.token
+            ?? UserStorage.load().first(where: { $0.key == key })?.token
         guard let token = token else {
             throw NSError(domain: "APIClient", code: -4, userInfo: [NSLocalizedDescriptionKey: "未找到对应组织的授权Token"])
         }
@@ -262,7 +261,7 @@ class APIClient {
             request.httpBody = try? JSONSerialization.data(withJSONObject: params, options: [])
         }
         
-         print("API->: \(requestURL)")
+//         print("API->: \(requestURL)")
 
         let task = URLSession.shared.dataTask(with: request) { data, response, error in
             if let error = error {
@@ -347,7 +346,7 @@ class APIClient {
         urlParameters: [String: Any]? = nil,
         body: [String: Any]? = nil,
         headers: [String: String]? = nil,
-        orgName: String? = nil
+        key: String
     ) async throws -> Data {
         do {
             return try await sendRequest(
@@ -359,8 +358,7 @@ class APIClient {
             )
         } catch {
             if (error as NSError).code == -1,
-               let orgName = orgName,
-               let userIdx = SharedUsers.firstIndex(where: { $0.orgName == orgName }) {
+               let userIdx = SharedUsers.firstIndex(where: { $0.key == key }) {
                 let user = SharedUsers[userIdx]
                 // 自动刷新token
                 let loginResponse = try await APIClient.login(email: user.email, password: user.password, org: user.orgName, region: user.region)
@@ -375,7 +373,7 @@ class APIClient {
                     method: method,
                     urlParameters: urlParameters,
                     body: body,
-                    headers: APIClient.authHeader(orgName)
+                    headers: APIClient.authHeader(key)
                 )
             } else {
                 throw error

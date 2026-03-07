@@ -490,6 +490,7 @@ extension View {
 
         let orgs1 = OrgListModel()
         let org = OrgInfo(
+            key: "1110",
             region: .china,
             name: "123",
             successCount: 20,
@@ -499,7 +500,6 @@ extension View {
             billingDate: Date(),
             startDate: Date(),
             endDate: Date(),
-            licenses: [],
             studies:[
                 study1,
                 study2
