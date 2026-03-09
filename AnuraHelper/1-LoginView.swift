@@ -62,6 +62,7 @@ struct LoginView: View {
 //        support michaelxu@nuralogix.ai Xq1988050414132024! 3000 1.2 2020.01.01 0
 //        support michaelxu@nuralogix.ai Xq1988050414132024! 3000 1.2 2020.01.01 0
 //        support michaelxu@nuralogix.ai Xq1988050414132024! 3000 1.2 2020.01.01 0
+//        support michaelxu@nuralogix.ai Xq1988050414132024! 3000 1.2 2020.01.01 0
 //        """
     @State private var orgName: String = ""
     @State private var email: String = ""
@@ -132,6 +133,8 @@ struct LoginView: View {
                     // 底部logo
                     LogoImage(image: .companyLogo)
                         .padding(.bottom, 10)
+                    VersionLabel()
+                        .padding(.bottom, 5)
                 }
                 .alert(isPresented: $alertManager.isPresented) {
                     Alert(
@@ -511,6 +514,17 @@ struct LanguageSwitchButton: View {
             }
             .padding(10)
         }
+    }
+}
+
+// 底部版本号组件
+struct VersionLabel: View {
+    var body: some View {
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
+        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? ""
+        Text("v\(version) (\(build))")
+            .font(.system(size: 8))
+            .foregroundColor(.lightPurple)
     }
 }
 

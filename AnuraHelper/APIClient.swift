@@ -251,7 +251,8 @@ class APIClient {
         }
         request = URLRequest(url: requestURL)
         request.httpMethod = apiRequest.method.rawValue
-        
+        request.httpShouldHandleCookies = false // 禁用 cookies
+
         apiRequest.headers?.forEach { key, value in
             request.setValue(value, forHTTPHeaderField: key)
         }

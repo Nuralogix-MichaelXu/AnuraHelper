@@ -19,6 +19,7 @@ struct BillingDetailView: View {
     @State private var tempUnitPriceValue = ""
     @State private var editingStudy: StudyResponse? = nil // 新增：当前正在编辑的study
     @State private var tempStudyUnitPriceValue = "" // 新增：study单价临时值
+    @State private var tempBillingDate = Date()
     @State private var billingDateString = ""
     @State private var currentTask: Task<Void, Never>? = nil // 新增: 当前请求任务
     @State private var isRefreshing = false
@@ -283,14 +284,14 @@ struct BillingDetailView: View {
         })
         .sheet(isPresented: $showDatePicker) {
             VStack {
-                DatePicker(Localized("billing_date"), selection: $org.billingDate, in: ...Date(), displayedComponents: .date)
+                DatePicker(Localized("billing_date"), selection: $tempBillingDate, in: ...Date(), displayedComponents: .date)
                     .datePickerStyle(.graphical)
                     .labelsHidden()
                     .environment(\.locale, Locale.preferredLanguages.first.map { Locale(identifier: $0) } ?? Locale.current)
                 HStack {
                     Button(Localized("reset")) {
                         showDatePicker = false
-                        org.billingDate = kInitialStartDate
+                        tempBillingDate = kInitialStartDate
                     }
                     .padding()
                     Spacer()
@@ -303,14 +304,17 @@ struct BillingDetailView: View {
             }
             .presentationDetents([.medium])
             .onDisappear {
-                billingDateString = org.billingDate.yyyyMMddDateString
-                if let idx = SharedUsers.firstIndex(where: { $0.orgName == org.name }) {
-                    var user = SharedUsers[idx]
-                    user.billingDate = org.billingDate
-                    SharedUsers[idx] = user
-                    UserStorage.save(users: SharedUsers)
-                    // 更新billingSuccess数据
-                    updateStudies()
+                if org.billingDate != tempBillingDate {
+                    org.billingDate = tempBillingDate
+                    billingDateString = org.billingDate.yyyyMMddDateString
+                    if let idx = SharedUsers.firstIndex(where: { $0.orgName == org.name }) {
+                        var user = SharedUsers[idx]
+                        user.billingDate = org.billingDate
+                        SharedUsers[idx] = user
+                        UserStorage.save(users: SharedUsers)
+                        // 更新billingSuccess数据
+                        updateStudies()
+                    }
                 }
             }
         }
@@ -327,6 +331,7 @@ struct BillingDetailView: View {
             )
         }
         .onAppear {
+            tempBillingDate = org.billingDate
             billingDateString = org.billingDate.yyyyMMddDateString
         }
     }
