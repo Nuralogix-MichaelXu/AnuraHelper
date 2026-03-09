@@ -230,7 +230,7 @@ struct BillingSendingView: View {
                             return
                         }
                         let cardView = BillingPreview(list: orgList.orgs, billName: orgList.billingName, billPeriod: orgList.billingPeriod)
-                        let image = cardView.asUIImage(size: CGSize(width: 600, height: 120 + 26 * orgList.orgs.count))
+                        let image = cardView.asUIImage(size: CGSize(width: 680, height: 120 + 26 * orgList.orgs.count))
                         // 1. 转为 base64
                         guard let imageData = image.jpegData(compressionQuality: 0.95) else { return }
                         let base64 = imageData.base64EncodedString()
@@ -406,7 +406,7 @@ struct BillingPreview: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 0) {
                     HStack {
-                        Text(Localized("org_name_label")).font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: 100, alignment: .leading)
+                        Text(Localized("org_name_label")).font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: 60, alignment: .leading)
                         Text(Localized("total_deposits_label")).font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: 50, alignment: .leading)
                         Text(Localized("period_cost_label")).font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: 60, alignment: .leading)
                         Text(Localized("total_cost_label")).font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: 50, alignment: .leading)
@@ -421,7 +421,7 @@ struct BillingPreview: View {
                     VStack(alignment: .leading, spacing: 0) {
                         ForEach(list.indices, id: \ .self) { idx in
                             HStack(alignment: .top) {
-                                Text(list[idx].name).font(.system(size: 8)).foregroundColor(.text).frame(width: 100, alignment: .leading)
+                                Text(list[idx].name).font(.system(size: 8)).foregroundColor(.text).frame(width: 60, alignment: .leading)
                                 Text(list[idx].totalDepositsString).font(.system(size: 8)).foregroundColor(.text).frame(width: 50, alignment: .leading)
                                 Text(list[idx].periodCostString).font(.system(size: 8)).foregroundColor(.text).frame(width: 60, alignment: .leading)
                                 Text(list[idx].totalCostString).font(.system(size: 8)).foregroundColor(.text).frame(width: 50, alignment: .leading)

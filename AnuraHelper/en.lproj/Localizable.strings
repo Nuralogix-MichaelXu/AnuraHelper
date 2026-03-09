@@ -3,6 +3,7 @@
 "login_mode_multi" = "Multiple Login";
 "login_note" = "Please login with the administrator account provided by Nuralogix";
 "alert_title" = "Notice";
+"network_unavailable" = "Network unavailable. Please check your internet connection.";
 "alert_fill_all" = "Please fill in all information";
 "alert_fill_format" = "Please enter your account information in the specified format";
 "login_failed" = "Login Failed";

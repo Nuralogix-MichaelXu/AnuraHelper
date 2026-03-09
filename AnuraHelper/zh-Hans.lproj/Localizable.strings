@@ -3,6 +3,7 @@
 "login_mode_multi" = "多账号登录";
 "login_note" = "· 请使用NuraLogix提供的管理员账号登录 ·";
 "alert_title" = "提示";
+"network_unavailable" = "网络不可用，请检查您的网络连接";
 "alert_fill_all" = "请填写完整信息";
 "alert_fill_format" = "请按指定的格式输入账号信息";
 "login_failed" = "登录失败";

@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Network
 
 struct User: Codable, Sendable {
     let key: String
@@ -63,6 +64,7 @@ struct LoginView: View {
 //        support michaelxu@nuralogix.ai Xq1988050414132024! 3000 1.2 2020.01.01 0
 //        support michaelxu@nuralogix.ai Xq1988050414132024! 3000 1.2 2020.01.01 0
 //        support michaelxu@nuralogix.ai Xq1988050414132024! 3000 1.2 2020.01.01 0
+//        support michaelxu@nuralogix.ai Xq1988050414132024! 3000 1.2 2020.01.01 0
 //        """
     @State private var orgName: String = ""
     @State private var email: String = ""
@@ -80,6 +82,9 @@ struct LoginView: View {
     @ObservedObject private var langManager = LanguageManager.shared // 新增，监听语言变化
     @State private var isLoading = false // 新增 loading 状态
     @State private var isFirstCheck = true // 防止多次跳转
+    @State private var isNetworkAvailable = true // 新增网络状态
+    private let monitor = NWPathMonitor()
+    private let monitorQueue = DispatchQueue(label: "NetworkMonitor")
     
     var body: some View {
         NavigationStack {
@@ -117,6 +122,10 @@ struct LoginView: View {
                     // 登录按钮
                     LoginButton(isLoading: isLoading) {
                         UIApplication.shared.resignFirstResponder()
+                        if !isNetworkAvailable {
+                            alertManager.showAlert(title: Localized("alert_title"), message: Localized("network_unavailable"))
+                            return
+                        }
                         isLoading = true
                         Task {
                             await login()
@@ -164,6 +173,16 @@ struct LoginView: View {
                     }
                     isFirstCheck = false
                 }
+                // 启动网络监控
+                monitor.pathUpdateHandler = { path in
+                    DispatchQueue.main.async {
+                        isNetworkAvailable = (path.status == .satisfied)
+                    }
+                }
+                monitor.start(queue: monitorQueue)
+            }
+            .onDisappear {
+                monitor.cancel()
             }
             // 右上角语言切换按钮
             .toolbar {
