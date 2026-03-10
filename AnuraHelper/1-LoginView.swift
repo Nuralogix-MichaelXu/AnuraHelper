@@ -66,6 +66,7 @@ struct LoginView: View {
 //        support michaelxu@nuralogix.ai Xq1988050414132024! 3000 1.2 2020.01.01 0
 //        support michaelxu@nuralogix.ai Xq1988050414132024! 3000 1.2 2020.01.01 0
 //        """
+    
     @State private var orgName: String = ""
     @State private var email: String = ""
     @State private var password: String = ""
@@ -215,7 +216,7 @@ struct LoginView: View {
                             email: email,
                             password: password,
                             region: region,
-                            deposits: 99999,
+                            deposits: 0,
                             unitPrice: 1.0,
                             billingDate: kInitialStartDate)
             users.append(user)

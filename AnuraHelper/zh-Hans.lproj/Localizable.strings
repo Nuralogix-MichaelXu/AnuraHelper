@@ -49,6 +49,8 @@
 "reset" = "重置";
 "confirm" = "确定";
 "cancel" = "取消";
+"add_deposits" = "追加金额";
+"edit_deposits" = "修改金额";
 "select_start_time" = "选择开始时间";
 "select_end_time" = "选择截止时间";
 "until_now" = "至今";
@@ -75,8 +77,8 @@
 "total_fail" = "总失败数";
 "study_id" = "研究ID";
 "summary_total" = "合计";
-"input_deposits_title" = "编辑押金";
-"input_deposits_placeholder" = "请输入押金金额";
+"input_deposits_title" = "编辑充值金额";
+"input_deposits_placeholder" = "请输入金额";
 "input_unit_price_title" = "编辑单价";
 "input_unit_price_placeholder" = "请输入单价";
 "mail_settings_title" = "邮件设置";

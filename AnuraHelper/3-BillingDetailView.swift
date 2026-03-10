@@ -47,7 +47,7 @@ struct BillingDetailView: View {
                                         .padding(.leading, 3)
                                         .padding(.top, -3.5)
                                         .onTapGesture {
-                                            tempDepositsValue = String(org.totalDeposits)
+                                            tempDepositsValue = ""
                                             showDepositsAlert = true
                                         }
                                 }
@@ -66,7 +66,7 @@ struct BillingDetailView: View {
                                         .padding(.leading, 3)
                                         .padding(.top, -3.5)
                                         .onTapGesture {
-                                            tempUnitPriceValue = formatUnitPrice(org.unitPrice)
+                                            tempUnitPriceValue = ""
                                             showUnitPriceAlert = true
                                         }
                                 }
@@ -221,7 +221,18 @@ struct BillingDetailView: View {
         .alert(Localized("input_deposits_title"), isPresented: $showDepositsAlert, actions: {
             TextField(Localized("input_deposits_placeholder"), text: $tempDepositsValue)
                 .keyboardType(.decimalPad)
-            Button(Localized("confirm")) {
+            Button(Localized("add_deposits")) {
+                if let newValue = Double(tempDepositsValue) {
+                    org.totalDeposits += newValue
+                    if let idx = SharedUsers.firstIndex(where: { $0.orgName == org.name }) {
+                        var user = SharedUsers[idx]
+                        user.deposits = newValue
+                        SharedUsers[idx] = user
+                        UserStorage.save(users: SharedUsers)
+                    }
+                }
+            }
+            Button(Localized("edit_deposits")) {
                 if let newValue = Double(tempDepositsValue) {
                     org.totalDeposits = newValue
                     if let idx = SharedUsers.firstIndex(where: { $0.orgName == org.name }) {

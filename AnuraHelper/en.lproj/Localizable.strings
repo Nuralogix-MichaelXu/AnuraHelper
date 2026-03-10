@@ -49,6 +49,8 @@
 "reset" = "Reset";
 "confirm" = "Confirm";
 "cancel" = "Cancel";
+"add_deposits" = "Add Deposits";
+"edit_deposits" = "Edit Deposits";
 "select_start_time" = "Select Start Time";
 "select_end_time" = "Select End Time";
 "until_now" = "Until now";
