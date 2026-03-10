@@ -7,5 +7,7 @@
 		<string>zh-Hans</string>
 		<string>en</string>
 	</array>
+	<key>CFBundleVersion</key>
+	<string>17</string>
 </dict>
 </plist>
