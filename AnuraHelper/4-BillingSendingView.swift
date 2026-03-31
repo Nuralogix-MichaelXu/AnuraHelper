@@ -235,8 +235,21 @@ struct BillingSendingView: View {
                         guard let imageData = image.jpegData(compressionQuality: 0.95) else { return }
                         let base64 = imageData.base64EncodedString()
                         let imgTag = "<img src=\"data:image/jpeg;base64,\(base64)\" style=\"max-width:100%;border-radius:8px;\">"
-                        // 2. 拼接 HTML
-                        let htmlBody = "<div style=\"font-size:15px;line-height:1.7;color:#222;padding:24px;\">\(content.replacingOccurrences(of: "\n", with: "<br>"))<br><br>\(imgTag)</div>"
+                        var logoTag = ""
+                        if let logo = UIImage(named: "companyLogo")?.withBackground(color: .white),
+                           let logoData = logo.jpegData(compressionQuality: 0.95) {
+                            let logoBase64 = logoData.base64EncodedString()
+                            logoTag = "<div style=\"margin-top:50px;text-align:left;\"><img src=\"data:image/jpeg;base64,\(logoBase64)\" style=\"max-width:120px;\"></div>"
+                        }
+
+                        // 3. 拼接 HTML 内容
+                        let htmlBody = """
+                        <div style="font-size:15px;line-height:1.7;color:#222;padding:24px;">
+                            \(content.replacingOccurrences(of: "\n", with: "<br>"))<br><br>
+                            \(imgTag)
+                            \(logoTag)
+                        </div>
+                        """
                         emailInfo.mailHTMLBody = htmlBody
                         emailInfo.title = orgList.billingName
                         showMail = true

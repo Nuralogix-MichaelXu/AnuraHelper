@@ -58,3 +58,16 @@ extension String {
         return formatter.date(from: self)
     }
 }
+
+extension UIImage {
+    func withBackground(color: UIColor = .white) -> UIImage {
+        UIGraphicsBeginImageContextWithOptions(size, false, scale)
+        color.setFill()
+        let rect = CGRect(origin: .zero, size: size)
+        UIRectFill(rect)
+        draw(in: rect)
+        let result = UIGraphicsGetImageFromCurrentImageContext()
+        UIGraphicsEndImageContext()
+        return result ?? self
+    }
+}
