@@ -217,6 +217,17 @@ struct StudyResponse: Codable {
     var encryptedKey: String {
         return encryptUUID(ID)
     }
+    
+    mutating func reset() {
+        TotalCount = 0
+        totalSuccessMeasurements = nil
+        periodSuccessMeasurements = nil
+        billingSuccessMeasurements = nil
+        periodBillingSuccessMeasurements = nil
+        periodFailMeasurements = nil
+        billingFailMeasurements = nil
+        isPerioContainBilling = nil
+    }
 }
 
 struct MeasurementResponse: Codable {

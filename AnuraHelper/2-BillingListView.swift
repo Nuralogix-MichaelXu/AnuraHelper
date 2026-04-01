@@ -593,30 +593,32 @@ struct BillingListView: View {
                 
                 var studiesCopy4 = [String: [StudyResponse]]()
                 for key in studies.keys {
-                    let orgStudies = studies[key] ?? []
+                    var orgStudies = studies[key] ?? []
                     guard let user = SharedUsers.first(where: { $0.key == key }) else {
                         continue
                     }
+                    for idx in orgStudies.indices {
+                        orgStudies[idx].reset()
+                    }
+
                     if user.billingDate > startDate && user.billingDate < endDate {
                         if lastSelectedFilter.endDateIsNow {
-                            guard var studies1 = studies[key] else { continue }
-                            for idx in studies1.indices {
-                                studies1[idx].isPerioContainBilling = true
+                            for idx in orgStudies.indices {
+                                orgStudies[idx].isPerioContainBilling = true
                             }
-                            studies[key] = studies1
+                            studies[key] = orgStudies
                         } else {
                             studiesCopy4[key] = orgStudies
                         }
                     } else {
-                        guard var studies1 = studies[key] else { continue }
-                        for idx in studies1.indices {
+                        for idx in orgStudies.indices {
                             if user.billingDate > endDate {
-                                studies1[idx].periodBillingSuccessMeasurements = 0
+                                orgStudies[idx].periodBillingSuccessMeasurements = 0
                             } else {
-                                studies1[idx].periodBillingSuccessMeasurements = nil
+                                orgStudies[idx].periodBillingSuccessMeasurements = nil
                             }
                         }
-                        studies[key] = studies1
+                        studies[key] = orgStudies
                     }
                 }
                 

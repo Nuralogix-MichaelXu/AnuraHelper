@@ -50,23 +50,6 @@ let kInitialStartDate = Calendar.current.date(from: DateComponents(year: 2020, m
 
 // 引入AlertManager
 struct LoginView: View {
-//    @State private var orgName: String = "support"
-//    @State private var email: String = "michaelxu@nuralogix.ai"
-//    @State private var password: String = "Xq1988050414132024!"
-//    @State private var multiAccountText: String = """
-//        support michaelxu@nuralogix.ai Xq1988050414132024! 5000 1.0 2020.01.01 0
-//        support michaelxu@nuralogix.ai Xq1988050414132024! 3000 1.2 2020.01.01 0
-//        support michaelxu@nuralogix.ai Xq1988050414132024! 5000 1.0 2020.01.01 0
-//        support michaelxu@nuralogix.ai Xq1988050414132024! 3000 1.2 2020.01.01 0
-//        support michaelxu@nuralogix.ai Xq1988050414132024! 3000 1.2 2020.01.01 0
-//        support michaelxu@nuralogix.ai Xq1988050414132024! 3000 1.2 2020.01.01 0
-//        support michaelxu@nuralogix.ai Xq1988050414132024! 3000 1.2 2020.01.01 0
-//        support michaelxu@nuralogix.ai Xq1988050414132024! 3000 1.2 2020.01.01 0
-//        support michaelxu@nuralogix.ai Xq1988050414132024! 3000 1.2 2020.01.01 0
-//        support michaelxu@nuralogix.ai Xq1988050414132024! 3000 1.2 2020.01.01 0
-//        support michaelxu@nuralogix.ai Xq1988050414132024! 3000 1.2 2020.01.01 0
-//        """
-    
     @State private var orgName: String = ""
     @State private var email: String = ""
     @State private var password: String = ""
