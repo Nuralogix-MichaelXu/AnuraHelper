@@ -108,8 +108,14 @@ struct BillingListView: View {
             } else {
                 endDateString = Localized("until_now")
             }
+            
+            var shouldSavedEndDate = savedEndDate
+            let calendar = Calendar.current
+            if calendar.isDate(shouldSavedEndDate ?? Date(), inSameDayAs: Date()) {
+                shouldSavedEndDate = nil
+            }
             for idx in SharedUsers.indices {
-                SharedUsers[idx].customPeriodEndDate = savedEndDate
+                SharedUsers[idx].customPeriodEndDate = shouldSavedEndDate
             }
             UserStorage.save(users: SharedUsers)
         }

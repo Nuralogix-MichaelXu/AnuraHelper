@@ -355,7 +355,7 @@ struct BillingDetailView: View {
                 var studiesDic = [org.key: org.studies]
                 let billingDateDic = [org.key: org.billingDate]
                 
-                if org.billingDate > org.startDate && org.billingDate < org.endDate {
+                if org.billingDate >= org.startDate && org.billingDate < org.endDate {
                     try await APIClient.updateStudies(&studiesDic, billingDateDic, nil, org.endDate, progress: {} )
                     for study in studiesDic[org.key]! {
                         if let idx = org.studies.firstIndex(where: { $0.ID == study.ID }) {
