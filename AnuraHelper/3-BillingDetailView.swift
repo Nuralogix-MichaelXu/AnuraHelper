@@ -74,10 +74,10 @@ struct BillingDetailView: View {
                             
                             HStack(alignment: .center, spacing: 0) {
                                 HStack(spacing: 0) {
-                                    Text(Localized("total_cost_label") + ": ")
+                                    Text(Localized("billing_cost_label") + ": ")
                                         .font(.system(size: 12))
                                         .foregroundColor(.text)
-                                    Text(org.totalCostString)
+                                    Text(org.billingCostString)
                                         .font(.system(size: 12))
                                         .foregroundColor(.text)
                                 }
@@ -165,12 +165,10 @@ struct BillingDetailView: View {
                                             Text(Localized("study_name")).frame(width: 90, alignment: .leading)
                                             Text(Localized("status")).frame(width: 50, alignment: .leading)
                                             Text(Localized("unit_price_label")).frame(width: 70, alignment: .leading)
-                                            Text(Localized("period_success")).frame(width: AutoSize(60, 85), alignment: .leading)
+                                            Text(Localized("success_count_label")).frame(width: AutoSize(70, 80), alignment: .leading)
+                                            Text(Localized("billing_cost_label")).frame(width: AutoSize(65, 60), alignment: .leading)
+                                            Text(Localized("period_success")).frame(width: AutoSize(70, 85), alignment: .leading)
                                             Text(Localized("period_cost")).frame(width: AutoSize(65, 75), alignment: .leading)
-                                            Text(Localized("total_success")).frame(width: AutoSize(55, 80), alignment: .leading)
-                                            Text(Localized("total_cost_label")).frame(width: AutoSize(60, 60), alignment: .leading)
-                                            Text(Localized("period_fail")).frame(width: 60, alignment: .leading)
-                                            Text(Localized("total_fail")).frame(width: 55, alignment: .leading)
                                             Text(Localized("study_id")).frame(width: 60, alignment: .leading)
                                         }
                                         .font(.system(size: 8, weight: .medium))
@@ -196,11 +194,8 @@ struct BillingDetailView: View {
                                             count: studies.count,
                                             totalPeriodSuccessCount: totalPeriodSuccessCount,
                                             totalBillingSuccessCount: totalBillingSuccessCount,
-                                            totalPeriodFailCount: totalPeriodFailCount,
                                             totalPeriodSuccessCost: totalPeriodSuccessCost,
-                                            totalSuccessCount: totalSuccessCount,
-                                            totalFailCount: totalFailCount,
-                                            totalCost: totalCost,
+                                            billingCost: billingCost,
                                             isPeriodCostHighlight: isPeriodCostHighlight,
                                             isCostHighlight: isCostHighlight
                                         )
@@ -395,14 +390,16 @@ private struct StudyRowView: View {
     let unitPrice: Double
     let onEditUnitPrice: (StudyResponse) -> Void // 新增：编辑单价回调
     var body: some View {
-        let totalSuccessMeasurements = study.totalSuccessMeasurements ?? 0
-        let periodSuccessMeasurements = study.periodSuccessMeasurements ?? totalSuccessMeasurements
+        let billingSuccessMeasurements = study.billingSuccessMeasurements ?? 0
+        let periodSuccessMeasurements = study.periodSuccessMeasurements
         let periodCost = study.periodCost
-        let cost = study.totalCost
+        let cost = study.billingCost
         
-        let isPeriodCostHighlight = periodCost < unitPrice * Double(periodSuccessMeasurements)
-        let isCostHighlight = cost < unitPrice * Double(totalSuccessMeasurements)
-
+        let isPeriodCostHighlight = (periodCost ?? 0) < unitPrice * Double(periodSuccessMeasurements ?? 0)
+        let isCostHighlight = cost < unitPrice * Double(billingSuccessMeasurements)
+        let periodSuccessMeasurementsString = periodSuccessMeasurements == nil ? "-" : "\(periodSuccessMeasurements!)"
+        let periodCostString = periodCost == nil ? "-" : formatAmount(periodCost!)
+        
         HStack(spacing: 0) {
             Text(study.createdDateString).frame(width: 70, alignment: .leading)
             Text(study.Name).frame(width: 90, alignment: .leading)
@@ -419,49 +416,45 @@ private struct StudyRowView: View {
                         .padding(.leading, 0)
                 }
             }.frame(width: 70, alignment: .leading)
-            Text("\(periodSuccessMeasurements)").frame(width: AutoSize(60, 85), alignment: .leading)
-            Text(formatAmount(periodCost)).frame(width: AutoSize(65, 75), alignment: .leading)
-                .foregroundColor(isPeriodCostHighlight ? .orange : .text)
 
-            Text("\(totalSuccessMeasurements)").frame(width: AutoSize(60, 80), alignment: .leading)
-            Text(formatAmount(cost)).frame(width: AutoSize(55, 60), alignment: .leading)
+            Text("\(billingSuccessMeasurements)").frame(width: AutoSize(70, 80), alignment: .leading)
+            Text(formatAmount(cost)).frame(width: AutoSize(65, 60), alignment: .leading)
                 .foregroundColor(isCostHighlight ? .orange : .text)
-            Text("\(study.periodFailMeasurements ?? 0)").frame(width: 60, alignment: .leading)
-            Text("\(study.totalFailMeasurements ?? 0)").frame(width: 55, alignment: .leading)
+            Text(periodSuccessMeasurementsString).frame(width: AutoSize(70, 85), alignment: .leading)
+            Text(periodCostString).frame(width: AutoSize(65, 75), alignment: .leading)
+                .foregroundColor(isPeriodCostHighlight ? .orange : .text)
             Text(study.encryptedKey).frame(width: 60, alignment: .leading)
         }
         .font(.system(size: 8))
         .foregroundColor(.text)
         .padding(.vertical, 6)
         .padding(.leading, 0)
-        .background(Color.white)
+        .background(Color.clear)
         .lineLimit(1)
     }
 }
 
 private struct StudySummaryRowView: View {
     let count: Int
-    let totalPeriodSuccessCount: Int
+    let totalPeriodSuccessCount: Int?
     let totalBillingSuccessCount: Int
-    let totalPeriodFailCount: Int
-    let totalPeriodSuccessCost: Double
-    let totalSuccessCount: Int
-    let totalFailCount: Int
-    let totalCost: Double
+    let totalPeriodSuccessCost: Double?
+    let billingCost: Double
     let isPeriodCostHighlight: Bool
     let isCostHighlight: Bool
 
     var body: some View {
         HStack(spacing: 0) {
+            let totalPeriodSuccessCountString = totalPeriodSuccessCount == nil ? "-" : "\(totalPeriodSuccessCount!)"
+            let totalPeriodSuccessCostString = totalPeriodSuccessCost == nil ? "-" : formatAmount(totalPeriodSuccessCost!)
+            
             Text(Localized("summary_total") + "(\(count))").frame(width: 280, alignment: .leading)
-            Text("\(totalPeriodSuccessCount)").frame(width: AutoSize(60, 85), alignment: .leading)
-            Text(formatAmount(totalPeriodSuccessCost)).frame(width: AutoSize(65, 75), alignment: .leading)
-                .foregroundColor(isPeriodCostHighlight ? .orange : .text)
-            Text("\(totalSuccessCount)").frame(width: AutoSize(60, 80), alignment: .leading)
-            Text(formatAmount(totalCost)).frame(width: AutoSize(55, 60), alignment: .leading)
+            Text("\(totalBillingSuccessCount)").frame(width: AutoSize(70, 80), alignment: .leading)
+            Text(formatAmount(billingCost)).frame(width: AutoSize(65, 60), alignment: .leading)
                 .foregroundColor(isCostHighlight ? .orange : .text)
-            Text("\(totalPeriodFailCount)").frame(width: 60, alignment: .leading)
-            Text("\(totalFailCount)").frame(width: AutoSize(50, 60), alignment: .leading)
+            Text(totalPeriodSuccessCountString).frame(width: AutoSize(70, 85), alignment: .leading)
+            Text(totalPeriodSuccessCostString).frame(width: AutoSize(65, 75), alignment: .leading)
+                .foregroundColor(isPeriodCostHighlight ? .orange : .text)
             Spacer()
         }
         .font(.system(size: 8, weight: .medium))
@@ -474,34 +467,28 @@ private struct StudySummaryRowView: View {
 
 extension BillingDetailView {
     private var studies: [StudyResponse] { org.studies }
-    private var totalPeriodSuccessCount: Int {
-        studies.reduce(0) { $0 + ($1.periodSuccessMeasurements ?? $1.totalSuccessMeasurements ?? 0) }
+    private var totalPeriodSuccessCount: Int? {
+        org.periodSuccess
     }
     private var totalBillingSuccessCount: Int {
         studies.reduce(0) { $0 + ($1.billingSuccessMeasurements ?? $1.totalSuccessMeasurements ?? 0) }
     }
-    private var totalPeriodFailCount: Int {
-        studies.reduce(0) { $0 + ($1.periodFailMeasurements ?? 0) }
-    }
-    private var totalPeriodSuccessCost: Double {
+    private var totalPeriodSuccessCost: Double? {
         org.periodCost
     }
     private var totalSuccessCount: Int {
         studies.reduce(0) { $0 + ($1.totalSuccessMeasurements ?? 0) }
     }
-    private var totalFailCount: Int {
-        studies.reduce(0) { $0 + ($1.totalFailMeasurements ?? 0) }
-    }
-    private var totalCost: Double {
-        org.totalCost
+    private var billingCost: Double {
+        org.billingCost
     }
     private var isPeriodCostHighlight: Bool {
         let periodCost = studies.reduce(0) { $0 + (Double($1.periodSuccessMeasurements ?? 0) * ($1.unitPrice ?? org.unitPrice)) }
-        return org.periodCost < periodCost
+        return (org.periodCost ?? 0) < periodCost
     }
     private var isCostHighlight: Bool {
-        let totalCost = studies.reduce(0) { $0 + (Double($1.totalSuccessMeasurements ?? 0) * ($1.unitPrice ?? org.unitPrice)) }
-        return org.totalCost < totalCost
+        let billingCost = studies.reduce(0) { $0 + (Double($1.billingSuccessMeasurements ?? 0) * ($1.unitPrice ?? org.unitPrice)) }
+        return org.billingCost < billingCost
     }
 }
 

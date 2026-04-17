@@ -17,6 +17,7 @@
 "region_international" = "Int.";
 "login_button" = "Login";
 "login_loading" = "Logging in";
+"datefilter_none" = "None";
 "datefilter_all" = "All";
 "datefilter_today" = "Today";
 "datefilter_yesterday" = "Yesterday";
@@ -33,7 +34,7 @@
 "study_count_label" = "Study(s)";
 "total_deposits_label" = "Total Deposits($)";
 "unit_price_label" = "Unit Price($)";
-"total_cost_label" = "Total Cost($)";
+"billing_cost_label" = "Billing Cost($)";
 "balance_label" = "Balance($)";
 "period_success_label" = "Success In Period(s)";
 "period_success_label2" = "Success \nIn Period(s)";
@@ -71,10 +72,7 @@
 "study_table_title" = "Study";
 "study_name" = "Study Name";
 "period_success" = "Period Success(s)";
-"period_fail" = "Period Fail(s)";
 "period_cost" = "Period Cost($)";
-"total_success" = "Total Success(s)";
-"total_fail" = "Total Fail(s)";
 "study_id" = "Study ID";
 "summary_total" = "Total";
 "input_deposits_title" = "Edit Deposits";

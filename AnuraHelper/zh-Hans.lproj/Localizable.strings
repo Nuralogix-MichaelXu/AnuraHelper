@@ -17,6 +17,7 @@
 "region_international" = "海外";
 "login_button" = "登录";
 "login_loading" = "登录中";
+"datefilter_none" = "无";
 "datefilter_all" = "全部";
 "datefilter_today" = "今天";
 "datefilter_yesterday" = "昨天";
@@ -32,7 +33,7 @@
 "license_count_label" = "许可证(个)";
 "study_count_label" = "研究(个)";
 "unit_price_label" = "单价(元/次)";
-"total_cost_label" = "总消费(元)";
+"billing_cost_label" = "账单费用(元)";
 "balance_label" = "余额(元)";
 "period_time" = "统计周期";
 "period_success_label" = "周期内成功测量(次)";
@@ -70,11 +71,8 @@
 "license_key" = "许可证密钥";
 "study_table_title" = "研究表";
 "study_name" = "研究名称";
-"period_success" = "周期成功数";
-"period_fail" = "周期失败数";
+"period_success" = "周期内测量(次)";
 "period_cost" = "周期费用(元)";
-"total_success" = "总成功数";
-"total_fail" = "总失败数";
 "study_id" = "研究ID";
 "summary_total" = "合计";
 "input_deposits_title" = "编辑充值金额";
@@ -86,8 +84,8 @@
 "bill_period_label" = "账单周期:";
 "org_name_label" = "组织名称";
 "total_deposits_label" = "总充值(元)";
-"success_count_label" = "总测量成功(次)";
-"left_success_count_label" = "剩余测量成功(次)";
+"success_count_label" = "账单内测量(次)";
+"left_success_count_label" = "剩余测量(次)";
 "send_to_email_label" = "发送至邮箱";
 "send_to_email_placeholder" = "example@gmail.com";
 "mail_content_label" = "邮件内容";
@@ -102,9 +100,9 @@
 "close" = "关闭";
 "org_count_label" = "组织数(个)";
 "insufficient_org_count_label" = "余额不足的组织数(个)";
-"accumulated_success_label" = "累计测量成功次数(次)";
-"accumulated_deposits_label" = "累计充值(元)";
-"accumulated_cost_label" = "累计消费(元)";
+"accumulated_success_label" = "共计测量成功次数(次)";
+"accumulated_deposits_label" = "共计充值(元)";
+"accumulated_cost_label" = "共计消费(元)";
 "accumulated_period_success_label" = "周期内测量成功次数(次)";
 "accumulated_period_cost_label" = "周期内消费(元)";
 "license_status_active" = "有效";
@@ -117,4 +115,4 @@
 "study_status_active" = "有效";
 "study_status_deleted" = "已删除";
 "study_status_invalid" = "无效";
-"billing_date" = "计费开始日期";
+"billing_date" = "账单开始日期";

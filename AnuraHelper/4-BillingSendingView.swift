@@ -78,11 +78,12 @@ struct BillingSendingView: View {
                             }
                             
                             HStack(spacing: 5) {
-                                Text(Localized("bill_period_label"))
+                                Text(Localized("billing_cost_label") + "：")
                                     .font(.system(size: 12))
                                     .foregroundColor(.text)
                                 
-                                Text(orgList.billingPeriod)
+                                let accumulatedCost = formatAmount(orgList.orgs.reduce(0) { $0 + $1.billingCost })
+                                Text(accumulatedCost)
                                     .font(.system(size: 12))
                                     .foregroundColor(.text)
                             }
@@ -94,13 +95,11 @@ struct BillingSendingView: View {
                                     HStack {
                                         Text(Localized("org_name_label")).font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: 60, alignment: .leading)
                                         Text(Localized("total_deposits_label")).font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: 50, alignment: .leading)
-                                        Text(Localized("period_cost_label")).font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: 60, alignment: .leading)
-                                        Text(Localized("total_cost_label")).font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: 50, alignment: .leading)
-                                        Text(Localized("balance_label")).font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: AutoSize(45, 55), alignment: .leading)
+                                        Text(Localized("billing_cost_label")).font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: 60, alignment: .leading)
+                                        Text(Localized("balance_label")).font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: 55, alignment: .leading)
                                         Text(Localized("unit_price_label")).font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: 65, alignment: .leading)
-                                        Text(Localized("period_success_label")).font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: AutoSize(80, 60), alignment: .leading)
                                         Text(Localized("success_count_label")).font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: 60, alignment: .leading)
-                                        Text(Localized("left_success_count_label")).font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: AutoSize(70, 60), alignment: .leading)
+                                        Text(Localized("left_success_count_label")).font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: 60, alignment: .leading)
                                         Text(Localized("billing_date")).font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: 70, alignment: .leading)
                                     }
                                     .padding(.vertical, 8)
@@ -112,13 +111,11 @@ struct BillingSendingView: View {
                                             HStack(alignment: .top) {
                                                 Text(orgs[idx].name).font(.system(size: 8)).foregroundColor(.text).frame(width: 60, alignment: .leading)
                                                 Text(orgs[idx].totalDepositsString).font(.system(size: 8)).foregroundColor(.text).frame(width: 50, alignment: .leading)
-                                                Text(orgs[idx].periodCostString).font(.system(size: 8)).foregroundColor(.text).frame(width: 60, alignment: .leading)
-                                                Text(orgs[idx].totalCostString).font(.system(size: 8)).foregroundColor(.text).frame(width: 50, alignment: .leading)
-                                                Text(orgs[idx].balanceString).font(.system(size: 8)).foregroundColor(orgs[idx].balanceColor).frame(width: AutoSize(45, 55), alignment: .leading)
+                                                Text(orgs[idx].billingCostString).font(.system(size: 8)).foregroundColor(.text).frame(width: 60, alignment: .leading)
+                                                Text(orgs[idx].balanceString).font(.system(size: 8)).foregroundColor(orgs[idx].balanceColor).frame(width: 55, alignment: .leading)
                                                 Text(orgs[idx].unitPriceString).font(.system(size: 8)).foregroundColor(.text).frame(width: 65, alignment: .leading)
-                                                Text("\(orgs[idx].periodSuccess)").font(.system(size: 8)).foregroundColor(.text).frame(width: AutoSize(80, 60), alignment: .leading)
                                                 Text("\(orgs[idx].successCount)").font(.system(size: 8)).foregroundColor(.text).frame(width: 60, alignment: .leading)
-                                                Text("\(orgs[idx].leftSuccessCount)").font(.system(size: 8)).foregroundColor(.text).frame(width: AutoSize(70, 60), alignment: .leading)
+                                                Text("\(orgs[idx].leftSuccessCount)").font(.system(size: 8)).foregroundColor(.text).frame(width: 60, alignment: .leading)
                                                 Text(orgs[idx].billingDate.yyyyMMddDateString).font(.system(size: 8)).foregroundColor(.text).frame(width: 70, alignment: .leading)
                                             }
                                             .padding(.vertical, 8)
@@ -273,9 +270,7 @@ struct BillingSendingView: View {
                     let insufficientOrgsCount = orgs.filter { $0.balance < 0 }.count
                     let accumulatedSuccess = orgs.reduce(0) { $0 + $1.successCount }
                     let accumulatedDeposits = formatAmount(orgs.reduce(0) { $0 + $1.totalDeposits })
-                    let accumulatedCost = formatAmount(orgs.reduce(0) { $0 + $1.totalCost })
-                    let accumulatedPeriodSuccess = orgs.reduce(0) { $0 + $1.periodSuccess }
-                    let accumulatedPeriodCost = formatAmount(orgs.reduce(0) { $0 + $1.periodCost })
+                    let accumulatedCost = formatAmount(orgs.reduce(0) { $0 + $1.billingCost })
                     
                     content = """
                         · \(Localized("org_count_label"))：\(orgs.count)
@@ -283,8 +278,6 @@ struct BillingSendingView: View {
                         · \(Localized("accumulated_success_label"))：\(accumulatedSuccess)
                         · \(Localized("accumulated_deposits_label"))：\(accumulatedDeposits)
                         · \(Localized("accumulated_cost_label"))：\(accumulatedCost)
-                        · \(Localized("accumulated_period_success_label"))：\(accumulatedPeriodSuccess)
-                        · \(Localized("accumulated_period_cost_label"))：\(accumulatedPeriodCost)
                         """
                 }
                 // Toast overlay
@@ -422,7 +415,7 @@ struct BillingPreview: View {
                         Text(Localized("org_name_label")).font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: 60, alignment: .leading)
                         Text(Localized("total_deposits_label")).font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: 50, alignment: .leading)
                         Text(Localized("period_cost_label")).font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: 60, alignment: .leading)
-                        Text(Localized("total_cost_label")).font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: 50, alignment: .leading)
+                        Text(Localized("billing_cost_label")).font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: 50, alignment: .leading)
                         Text(Localized("balance_label")).font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: 45, alignment: .leading)
                         Text(Localized("unit_price_label")).font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: 65, alignment: .leading)
                         Text(Localized("period_success_label")).font(.system(size: 8, weight: .medium)).foregroundColor(.text).frame(width: 80, alignment: .leading)
@@ -437,10 +430,10 @@ struct BillingPreview: View {
                                 Text(list[idx].name).font(.system(size: 8)).foregroundColor(.text).frame(width: 60, alignment: .leading)
                                 Text(list[idx].totalDepositsString).font(.system(size: 8)).foregroundColor(.text).frame(width: 50, alignment: .leading)
                                 Text(list[idx].periodCostString).font(.system(size: 8)).foregroundColor(.text).frame(width: 60, alignment: .leading)
-                                Text(list[idx].totalCostString).font(.system(size: 8)).foregroundColor(.text).frame(width: 50, alignment: .leading)
+                                Text(list[idx].billingCostString).font(.system(size: 8)).foregroundColor(.text).frame(width: 50, alignment: .leading)
                                 Text(list[idx].balanceString).font(.system(size: 8)).foregroundColor(.text).frame(width: 45, alignment: .leading)
                                 Text(list[idx].unitPriceString).font(.system(size: 8)).foregroundColor(.text).frame(width: 65, alignment: .leading)
-                                Text("\(list[idx].periodSuccess)").font(.system(size: 8)).foregroundColor(.text).frame(width: 80, alignment: .leading)
+                                Text("\(list[idx].periodSuccess ?? 0)").font(.system(size: 8)).foregroundColor(.text).frame(width: 80, alignment: .leading)
                                 Text("\(list[idx].successCount)").font(.system(size: 8)).foregroundColor(.text).frame(width: 60, alignment: .leading)
                                 Text("\(list[idx].leftSuccessCount)").font(.system(size: 8)).foregroundColor(.text).frame(width: 70, alignment: .leading)
                                 Text(list[idx].billingDate.yyyyMMddDateString).font(.system(size: 8)).foregroundColor(.text).frame(width: 70, alignment: .leading)
@@ -490,7 +483,8 @@ extension View {
                                   Description: "test demo1",
                                   StatusID: "ACTIVE",
                                   Measurements: 10)
-        study1.unitPrice = 1.2
+        study1.unitPrice = 1.22
+        study1.billingSuccessMeasurements = 2
         
         var study2 = StudyResponse(Created: 123132323,
                                   ID: "lkjghjajjsdjsjkd",

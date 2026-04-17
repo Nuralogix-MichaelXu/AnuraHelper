@@ -9,7 +9,7 @@ struct OrgInfo: Identifiable {
     let successCount: Int
     var totalDeposits: Double
     var unitPrice: Double
-    let periodSuccess: Int
+    let periodSuccess: Int?
     var billingDate: Date
     var startDate: Date
     var endDate: Date
@@ -20,27 +20,44 @@ struct OrgInfo: Identifiable {
     }
     
     var balance: Double {
-        return totalDeposits - totalCost
+        return totalDeposits - billingCost
     }
     
     var totalDepositsString: String {
         return formatAmount(totalDeposits)
     }
     
-    var totalCost: Double {
+    var billingSuccessMeasurements: Int {
         return studies.reduce(0) {
-            return $0 + $1.totalCost
+            return $0 + ($1.billingSuccessMeasurements ?? $1.totalSuccessMeasurements ?? 0)
         }
     }
     
-    var periodCost: Double {
+    var billingCost: Double {
         return studies.reduce(0) {
-            return $0 + $1.periodCost
+            return $0 + $1.billingCost
+        }
+    }
+
+    var periodCost: Double? {
+        if periodSuccess == nil {
+            return nil
+        }
+        return studies.reduce(0) {
+            return $0 + ($1.periodCost ?? 0)
         }
     }
     
-    var totalCostString: String {
-        return formatAmount(totalCost)
+    var periodCostString: String {
+        return periodCost == nil ? "-" : formatAmount(periodCost!)
+    }
+    
+    var periodSuccessString: String {
+        return periodSuccess == nil ? "-" : "\(periodSuccess!)"
+    }
+
+    var billingCostString: String {
+        return formatAmount(billingCost)
     }
     
     var balanceString: String {
@@ -53,10 +70,6 @@ struct OrgInfo: Identifiable {
         } else {
             return Color.text
         }
-    }
-    
-    var periodCostString: String {
-        return formatAmount(periodCost)
     }
     
     var unitPriceString: String {
@@ -83,7 +96,6 @@ struct MeasurementInfo: Codable {
     let orgName: String
     let studyID: String
     let successCount: Int
-    let failCount: Int
 }
 
 // MARK: - LoginResponse Struct
@@ -181,12 +193,12 @@ struct StudyResponse: Codable {
     var periodSuccessMeasurements: Int?
     var billingSuccessMeasurements: Int?
     var periodBillingSuccessMeasurements: Int?
-    var totalFailMeasurements: Int?
-    var periodFailMeasurements: Int?
-    var billingFailMeasurements: Int?
     var isPerioContainBilling: Bool?
     var unitPrice: Double?
-    var periodCost: Double {
+    var periodCost: Double? {
+        if periodSuccessMeasurements == nil {
+            return nil
+        }
         if let isPerioContainBilling = isPerioContainBilling, isPerioContainBilling {
             return (unitPrice ?? 0) * Double(billingSuccessMeasurements ?? 0)
         }
@@ -194,9 +206,8 @@ struct StudyResponse: Codable {
         return (unitPrice ?? 0) * Double(periodSuccessMeasurements)
     }
     
-    var totalCost: Double {
-        let totalCostSuccessMeasurements = billingSuccessMeasurements ?? totalSuccessMeasurements ?? 0
-        return (unitPrice ?? 0) * Double(totalCostSuccessMeasurements)
+    var billingCost: Double {
+        return (unitPrice ?? 0) * Double(billingSuccessMeasurements ?? totalSuccessMeasurements ?? 0)
     }
 
     var statusString: String {
@@ -224,8 +235,6 @@ struct StudyResponse: Codable {
         periodSuccessMeasurements = nil
         billingSuccessMeasurements = nil
         periodBillingSuccessMeasurements = nil
-        periodFailMeasurements = nil
-        billingFailMeasurements = nil
         isPerioContainBilling = nil
     }
 }

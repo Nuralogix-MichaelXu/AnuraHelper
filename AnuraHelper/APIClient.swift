@@ -91,32 +91,29 @@ extension APIClient {
             let orgName = SharedUsers.first(where: { $0.key == key })?.orgName ?? ""
 
             var nextIndex = 0
-            try await withThrowingTaskGroup(of: (Int, Int?, Int?).self) { group in
+            try await withThrowingTaskGroup(of: (Int, Int?).self) { group in
                 // 先启动最多2个任务
                 while nextIndex < min(10, studies.count) {
                     let index = nextIndex
                     let study = studies[index]
                     group.addTask {
                         let info = try await APIClient.getMeasurementInfo(orgName: orgName, region: region, studyID: study.ID, date: startDateStr, endDate: endDateStr, progress: progress)
-                        return (index, info.successCount, info.failCount)
+                        return (index, info.successCount)
                     }
                     nextIndex += 1
                 }
 
                 // 每有一个任务完成就补充一个新任务
-                for try await (index, successCount, failCount) in group {
+                for try await (index, successCount) in group {
                     if let count = successCount {
                         updatedStudies[index].totalSuccessMeasurements = count
-                    }
-                    if let count = failCount {
-                        updatedStudies[index].totalFailMeasurements = count
                     }
                     if nextIndex < studies.count {
                         let indexToAdd = nextIndex
                         let study = studies[indexToAdd]
                         group.addTask {
                             let info = try await APIClient.getMeasurementInfo(orgName: orgName, region: region, studyID: study.ID, date: startDateStr, endDate: endDateStr, progress: progress)
-                            return (indexToAdd, info.successCount, info.failCount)
+                            return (indexToAdd, info.successCount)
                         }
                         nextIndex += 1
                     }
@@ -205,18 +202,15 @@ extension APIClient {
     }
     
     static func getMeasurementInfo(orgName: String, region: Region, studyID: String, date: String? = nil, endDate: String? = nil, progress: @escaping () -> Void) async throws -> MeasurementInfo {
-        let totalMeasurements = try await getMeasurements(orgName: orgName, region: region, studyID: studyID, date: date, endDate: endDate)
         progress()
         let completeMeasurements = try await getMeasurements(orgName: orgName, region: region, studyID: studyID, statusID: "COMPLETE", date: date, endDate: endDate)
         progress()
         let partialMeasurements = try await getMeasurements(orgName: orgName, region: region, studyID: studyID, statusID: "PARTIAL", date: date, endDate: endDate)
         progress()
-        let totalCount = totalMeasurements.first?.TotalCount ?? 0
         let completeCount = completeMeasurements.first?.TotalCount ?? 0
         let partialCount = partialMeasurements.first?.TotalCount ?? 0
         let successCount = completeCount + partialCount
-        let failCount = totalCount - successCount
-        return MeasurementInfo(orgName: orgName, studyID: studyID, successCount: successCount, failCount: failCount)
+        return MeasurementInfo(orgName: orgName, studyID: studyID, successCount: successCount)
     }
 
     

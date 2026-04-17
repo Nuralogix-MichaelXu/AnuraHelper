@@ -10,6 +10,7 @@ class OrgListModel: ObservableObject {
 }
 
 enum DateFilter: String, CaseIterable, Codable {
+    case none = "none"
     case all = "all"
     case today = "today"
     case yesterday = "yesterday"
@@ -24,6 +25,7 @@ enum DateFilter: String, CaseIterable, Codable {
     
     var localized: String {
         switch self {
+        case .none: return Localized("datefilter_none")
         case .all: return Localized("datefilter_all")
         case .today: return Localized("datefilter_today")
         case .yesterday: return Localized("datefilter_yesterday")
@@ -120,15 +122,8 @@ struct BillingListView: View {
             UserStorage.save(users: SharedUsers)
         }
     }
-    @State private var selectedFilter: DateFilter = .all {
-        didSet {
-            for idx in SharedUsers.indices {
-                SharedUsers[idx].period = selectedFilter
-            }
-            UserStorage.save(users: SharedUsers)
-        }
-    }
-    @State private var lastSelectedFilter: DateFilter = .all
+    @State private var selectedFilter: DateFilter = .none
+    @State private var lastSelectedFilter: DateFilter = .none
     @State private var isCustomDatePickerPresented = false
     @State private var isMenuOpen = false
     @State private var isExpanded = false
@@ -194,7 +189,7 @@ struct BillingListView: View {
                                     isCustomDatePickerPresented = false
                                 }
                                 if lastSelectedFilter == .custom {
-                                    lastSelectedFilter = .all
+                                    lastSelectedFilter = .none
                                 }
                                 selectedFilter = lastSelectedFilter
                                 performFilter(lastSelectedFilter, savedUpdateTime != orgList.updateTime ? true : false)
@@ -411,7 +406,7 @@ struct BillingListView: View {
                             .shadow(color: Color.black.opacity(0.15), radius: 8, x: 0, y: 4)
                             .frame(width: AutoSize(100, 190), alignment: .leading)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .frame(height: isExpanded ? 440 : 0, alignment: .top)
+                            .frame(height: isExpanded ? Double(40 * DateFilter.allCases.count) : 0, alignment: .top)
                             .clipped()
                             .animation(.easeInOut(duration: 0.15), value: isExpanded)
                         
@@ -515,7 +510,7 @@ struct BillingListView: View {
                         }
                     }
                 } else {
-                    selectedFilter = .all
+                    selectedFilter = .none
                 }
                 
                 performFilter(selectedFilter)
@@ -574,7 +569,7 @@ struct BillingListView: View {
                 }
                 let studyCount = studies.values.flatMap { $0 }.count
                 let progress = totalRequests == 0 ? 0 : completedRequests / totalRequests
-                totalRequests += Double(studyCount) * (selectedFilter == .all ? 3 : 6)
+                totalRequests += Double(studyCount) * (selectedFilter == .none ? 0 : 2)
                 var studiesCopy3 = [String: [StudyResponse]]()
                 var billingDateDic = [String: Date]()
                 for key in studies.keys {
@@ -582,13 +577,11 @@ struct BillingListView: View {
                     guard let user = SharedUsers.first(where: { $0.key == key }) else {
                         continue
                     }
-                    if user.billingDate != kInitialStartDate {
-                        studiesCopy3[key] = orgStudies
-                        billingDateDic[key] = user.billingDate
-                    }
+                    studiesCopy3[key] = orgStudies
+                    billingDateDic[key] = user.billingDate
                 }
                 if !studiesCopy3.isEmpty {
-                    totalRequests += Double(studiesCopy3.values.flatMap { $0 }.count) * 3
+                    totalRequests += Double(studiesCopy3.values.flatMap { $0 }.count) * 2
                 }
                 
                 var studiesCopy4 = [String: [StudyResponse]]()
@@ -623,7 +616,7 @@ struct BillingListView: View {
                 }
                 
                 if !studiesCopy4.isEmpty {
-                    totalRequests += Double(studiesCopy4.values.flatMap { $0 }.count) * 3
+                    totalRequests += Double(studiesCopy4.values.flatMap { $0 }.count) * 2
                 }
 
                 completedRequests = progress * totalRequests
@@ -633,21 +626,15 @@ struct BillingListView: View {
                 }
                 
                 var studiesCopy = studies
-                try await APIClient.updateStudies(&studiesCopy, nil, nil, nil, progress: { completedRequests += 1 * factor })
-                var studiesCopy2 = studiesCopy
-                if selectedFilter != .all {
-                    try await APIClient.updateStudies(&studiesCopy2, nil, startDate, endDate, progress: { completedRequests += 1 * factor })
+                if selectedFilter != .none {
+                    try await APIClient.updateStudies(&studiesCopy, nil, startDate, endDate, progress: { completedRequests += 1 * factor })
                 }
                 
-                for (key, studies2) in studiesCopy2 {
+                for (key, studies2) in studiesCopy {
                     guard var studies1 = studiesCopy[key] else { continue }
                     for study2 in studies2 {
                         if let idx = studies1.firstIndex(where: { $0.ID == study2.ID }) {
-                            if selectedFilter != .all {
-                                studies1[idx].periodSuccessMeasurements = study2.totalSuccessMeasurements
-                            } else {
-                                studies1[idx].periodSuccessMeasurements = studies1[idx].totalSuccessMeasurements
-                            }
+                            studies1[idx].periodSuccessMeasurements = study2.totalSuccessMeasurements
                         }
                     }
                     studiesCopy[key] = studies1
@@ -737,6 +724,9 @@ struct BillingListView: View {
             }
         } else {
             switch filter {
+            case .none:
+                startDate = now
+                endDate = now
             case .all:
                 startDate = kInitialStartDate
                 endDate = now
@@ -807,7 +797,8 @@ extension BillingListView {
         return studyArray.compactMap { $0.totalSuccessMeasurements }.reduce(0, +)
     }
     
-    func periodSuccessMeasurements(for user: User, in studies: [String: [StudyResponse]]) -> Int {
+    func periodSuccessMeasurements(for user: User, in studies: [String: [StudyResponse]]) -> Int? {
+        if selectedFilter == .none { return nil }
         guard let studyArray = studies[user.key] else { return 0 }
         return studyArray.compactMap { $0.periodSuccessMeasurements ?? $0.totalSuccessMeasurements }.reduce(0, +)
     }
