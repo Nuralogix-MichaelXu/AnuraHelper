@@ -7,6 +7,7 @@ class OrgListModel: ObservableObject {
     @Published var billingName = ""
     @Published var updateTime = Date()
     @Published var isUpdateFail = false
+    @Published var isPeriodNone = true
 }
 
 enum DateFilter: String, CaseIterable, Codable {
@@ -240,8 +241,8 @@ struct BillingListView: View {
                     
                     Spacer()
                     
-                    NavigationLink(destination: BillingPreviewFullView(orgList: orgList)) {
-                            LocalizedText("bill_preview", font: .system(size: 9), color: .white)
+                    NavigationLink(destination: StatisticsView(orgList: orgList)) {
+                            LocalizedText("statistics_billing_title", font: .system(size: 9), color: .white)
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 8)
                                 .background(Color.deepPurple)
@@ -691,6 +692,7 @@ struct BillingListView: View {
                     } else {
                         orgList.billingPeriod = selectedFilter.localized
                     }
+                    orgList.isPeriodNone = selectedFilter == .none
                     orgList.updateTime = Date()
                     orgList.billingName = Localized("bill_prefix") + orgList.updateTime.yyyyMMddhhmmssDateString
                 }

@@ -38,7 +38,7 @@ struct BillingOrgCard: View {
                         .font(Style.labelFont)
                         .foregroundColor(Style.labelColor)
                     Spacer()
-                    Text(Localized("success_count_label") + ": \(org.billingSuccessMeasurements)")
+                    Text(Localized("success_count_label") + ": \(formatCount(org.billingSuccessMeasurements))")
                         .font(Style.labelFont)
                         .foregroundColor(Style.labelColor)
                 }

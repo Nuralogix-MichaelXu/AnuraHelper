@@ -116,3 +116,13 @@
 "study_status_deleted" = "已删除";
 "study_status_invalid" = "无效";
 "billing_date" = "账单开始日期";
+"statistics_billing_title" = "统计分析";
+"measurement_count" = "测量次数";
+"measurement_cost" = "测量费用";
+"statistics_tab_billing" = "账单";
+"statistics_tab_custom_period" = "自定义周期";
+"statistics_total_prefix" = "共计";
+"statistics_30s_measurement" = "30s测量";
+"statistics_5s_measurement" = "5s测量";
+"statistics_all_measurement" = "全部测量";
+"statistics_company_name" = "公司名称";

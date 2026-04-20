@@ -171,15 +171,17 @@ extension APIClient {
         return try JSONDecoder().decode([StudyResponse].self, from: data)
     }
     
-    static func getMeasurements(orgName: String, region: Region, studyID: String, statusID: String? = nil, date: String? = nil, endDate: String? = nil) async throws -> [MeasurementResponse] {
+    static func getMeasurements(orgName: String, region: Region, studyID: String?, statusID: String? = nil, date: String? = nil, endDate: String? = nil) async throws -> [MeasurementResponse] {
         return try await getMeasurementsWithRetry(orgName: orgName, region: region, studyID: studyID, statusID: statusID, date: date, endDate: endDate, retryCount: 0)
     }
     
     /// 带重试的 getMeasurements，最大重试5次
-    private static func getMeasurementsWithRetry(orgName: String, region: Region, studyID: String, statusID: String? = nil, date: String? = nil, endDate: String? = nil, retryCount: Int) async throws -> [MeasurementResponse] {
+    private static func getMeasurementsWithRetry(orgName: String, region: Region, studyID: String?, statusID: String? = nil, date: String? = nil, endDate: String? = nil, retryCount: Int) async throws -> [MeasurementResponse] {
         do {
-            var urlParameters: [String: Any] = ["Limit": 1,
-                                                "StudyID": studyID]
+            var urlParameters: [String: Any] = ["Limit": 1]
+            if let studyID = studyID {
+                urlParameters["StudyID"] = studyID
+            }
             if let date = date { urlParameters["Date"] = date }
             if let endDate = endDate { urlParameters["EndDate"] = endDate }
             if let statusID = statusID { urlParameters["StatusID"] = statusID }
@@ -201,8 +203,7 @@ extension APIClient {
         }
     }
     
-    static func getMeasurementInfo(orgName: String, region: Region, studyID: String, date: String? = nil, endDate: String? = nil, progress: @escaping () -> Void) async throws -> MeasurementInfo {
-        progress()
+    static func getMeasurementInfo(orgName: String, region: Region, studyID: String?, date: String? = nil, endDate: String? = nil, progress: @escaping () -> Void) async throws -> MeasurementInfo {
         let completeMeasurements = try await getMeasurements(orgName: orgName, region: region, studyID: studyID, statusID: "COMPLETE", date: date, endDate: endDate)
         progress()
         let partialMeasurements = try await getMeasurements(orgName: orgName, region: region, studyID: studyID, statusID: "PARTIAL", date: date, endDate: endDate)

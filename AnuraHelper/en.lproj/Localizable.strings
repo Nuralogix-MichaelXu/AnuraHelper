@@ -115,3 +115,13 @@
 "study_status_deleted" = "Deleted";
 "study_status_invalid" = "Invalid";
 "billing_date" = "Billing Start Date";
+"statistics_billing_title" = "Statistics";
+"measurement_count" = "Measurement count";
+"measurement_cost" = "Measurement cost";
+"statistics_tab_billing" = "账单";
+"statistics_tab_custom_period" = "Custom Period";
+"statistics_total_prefix" = "Total";
+"statistics_30s_measurement" = "30s Measurement";
+"statistics_5s_measurement" = "5s Measurement";
+"statistics_all_measurement" = "All Measurements";
+"statistics_company_name" = "Company Name";

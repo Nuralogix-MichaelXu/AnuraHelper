@@ -53,7 +53,7 @@ struct OrgInfo: Identifiable {
     }
     
     var periodSuccessString: String {
-        return periodSuccess == nil ? "-" : "\(periodSuccess!)"
+        return periodSuccess == nil ? "-" : formatCount(periodSuccess!)
     }
 
     var billingCostString: String {
@@ -94,7 +94,7 @@ struct OrgInfo: Identifiable {
 
 struct MeasurementInfo: Codable {
     let orgName: String
-    let studyID: String
+    let studyID: String?
     let successCount: Int
 }
 
@@ -248,6 +248,13 @@ struct MeasurementResponse: Codable {
 nonisolated struct ErrorResponse: Codable {
     let Code: String
     let Message: String
+}
+
+func formatCount(_ value: Int) -> String {
+    let formatter = NumberFormatter()
+    formatter.numberStyle = .decimal
+    formatter.groupingSeparator = ","
+    return formatter.string(from: NSNumber(value: value)) ?? "\(value)"
 }
 
 func formatAmount(_ value: Double) -> String {
