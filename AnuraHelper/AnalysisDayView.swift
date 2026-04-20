@@ -15,35 +15,35 @@ struct AnalysisDayView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("30日测量趋势")
+            Text(Localized("analysis_day_title"))
                 .font(.system(size: 18, weight: .semibold))
                 .foregroundColor(.primary)
 
             Chart {
                 ForEach(data) { item in
                     LineMark(
-                        x: .value("日期", item.date),
-                        y: .value("测量次数", item.count)
+                        x: .value(Localized("analysis_axis_date"), item.date),
+                        y: .value(Localized("analysis_axis_measurement_count"), item.count)
                     )
                     .interpolationMethod(.catmullRom)
                     .foregroundStyle(.blue)
                     .lineStyle(.init(lineWidth: 2))
 
                     PointMark(
-                        x: .value("日期", item.date),
-                        y: .value("测量次数", item.count)
+                        x: .value(Localized("analysis_axis_date"), item.date),
+                        y: .value(Localized("analysis_axis_measurement_count"), item.count)
                     )
                     .foregroundStyle(.blue)
                 }
 
                 if let selected = selectedDataPoint {
-                    RuleMark(x: .value("选中日期", selected.date))
+                    RuleMark(x: .value(Localized("analysis_selected_date"), selected.date))
                         .foregroundStyle(.gray.opacity(0.35))
                         .lineStyle(.init(lineWidth: 1, dash: [4, 4]))
 
                     PointMark(
-                        x: .value("选中日期", selected.date),
-                        y: .value("选中测量次数", selected.count)
+                        x: .value(Localized("analysis_selected_date"), selected.date),
+                        y: .value(Localized("analysis_selected_measurement_count"), selected.count)
                     )
                     .symbolSize(80)
                     .foregroundStyle(.orange)
@@ -85,11 +85,11 @@ struct AnalysisDayView: View {
             }
 
             if let selected = selectedDataPoint {
-                Text("已选中：\(Self.fullDateLabel(for: selected.date))，测量次数：\(selected.count)")
+                Text(String(format: Localized("analysis_selected_day_format"), Self.fullDateLabel(for: selected.date), formatCount(selected.count)))
                     .font(.system(size: 13))
                     .foregroundColor(.secondary)
             } else {
-                Text("可左右滑动查看更多日期，点击折线图查看当天测量次数")
+                Text(Localized("analysis_day_hint"))
                     .font(.system(size: 13))
                     .foregroundColor(.secondary)
             }

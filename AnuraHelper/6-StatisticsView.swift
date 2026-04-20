@@ -284,10 +284,10 @@ private struct MeasureBlockView: View {
                 .foregroundColor(.text)
 
             VStack(alignment: .leading, spacing: 10) {
-                Text("· \(Localized("measurement_count")):  \(count)")
+                Text("\(Localized("measurement_count"))\(count)")
                     .font(.system(size: 8, weight: .regular))
                     .foregroundColor(.subText)
-                Text("· \(Localized("measurement_cost")):  \(cost)")
+                Text("\(Localized("measurement_cost"))\(cost)")
                     .font(.system(size: 8, weight: .regular))
                     .foregroundColor(.subText)
             }

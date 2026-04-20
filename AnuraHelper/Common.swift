@@ -71,3 +71,9 @@ extension UIImage {
         return result ?? self
     }
 }
+
+extension UIDevice {
+    var isIPad: Bool {
+        userInterfaceIdiom == .pad
+    }
+}

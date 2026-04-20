@@ -67,6 +67,7 @@ enum DateFilter: String, CaseIterable, Codable {
 }
 
 struct BillingListView: View {
+    @Environment(\.dismiss) private var dismiss
     @StateObject private var alertManager = AlertManager()
     @StateObject private var orgList = OrgListModel()
     @State private var isRefreshing = false
@@ -74,7 +75,6 @@ struct BillingListView: View {
     @State private var totalRequests: Double = 0 // 总请求数
     @State private var completedRequests: Double = 0 // 已完成请求数
     @State private var progressTimer: Timer? = nil // 进度动画定时器
-    @Environment(\.presentationMode) private var presentationMode
     @State private var startDateString: String = ""
     @State private var endDateString: String = ""
     @State private var isStartDatePickerPresented = false
@@ -131,7 +131,7 @@ struct BillingListView: View {
     @State private var currentTask: Task<Void, Never>? = nil // 新增: 当前请求任务
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             VStack(spacing: 0) {
                 // 顶部日期选择和按钮
                 HStack(alignment: .bottom, spacing: 5) {
@@ -313,9 +313,10 @@ struct BillingListView: View {
                     Button(action: {
                         alertManager.showAlert(title: Localized("alert_title"), message: Localized("alert_logout_confirm")) {
                             currentTask?.cancel()
-                            presentationMode.wrappedValue.dismiss()
                             SharedUsers.removeAll()
                             UserStorage.clear()
+                            // 关键：退出后立刻返回登录页
+                            dismiss()
                         }
                     }) {
                         Image(systemName: "arrow.left.to.line.square")
@@ -443,7 +444,8 @@ struct BillingListView: View {
                     }
                     .padding(.horizontal, 50)
                 }
-                .presentationDetents([.medium])
+                // iPad 上 .medium 经常会裁切 graphical 日历，改为 large
+                .presentationDetents(UIDevice.current.isIPad ? [.large] : [.medium])
             }
             .sheet(isPresented: $isEndDatePickerPresented) {
                 VStack {
@@ -473,7 +475,7 @@ struct BillingListView: View {
                     }
                     .padding(.horizontal, 50)
                 }
-                .presentationDetents([.medium])
+                .presentationDetents(UIDevice.current.isIPad ? [.large] : [.medium])
             }
             .alert(isPresented: $alertManager.isPresented) {
                 Alert(

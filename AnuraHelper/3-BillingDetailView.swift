@@ -9,7 +9,7 @@ import SwiftUI
 
 struct BillingDetailView: View {
     @StateObject private var alertManager = AlertManager()
-    @Environment(\.presentationMode) private var presentationMode
+    @Environment(\.dismiss) private var dismiss
     @Binding var org: OrgInfo
     let period: String
     @State private var showDepositsAlert = false
@@ -25,187 +25,185 @@ struct BillingDetailView: View {
     @State private var isRefreshing = false
 
     var body: some View {
-        NavigationView {
-            ZStack(alignment: .bottomTrailing) {
+        ZStack(alignment: .bottomTrailing) {
+            VStack(alignment: .leading, spacing: 0) {
+                let vSpace: CGFloat = 15.0
                 VStack(alignment: .leading, spacing: 0) {
-                    let vSpace: CGFloat = 15.0
-                    VStack(alignment: .leading, spacing: 0) {
-                        // 组织信息区
-                        VStack(spacing: vSpace) {
-                            HStack(alignment: .center, spacing: 0) {
-                                HStack(spacing: 0) {
-                                    Text(Localized("total_deposits_label") + ": ")
-                                        .font(.system(size: 12))
-                                        .foregroundColor(.text)
-                                    Text(org.totalDepositsString)
-                                        .font(.system(size: 12))
-                                        .foregroundColor(.text)
-                                    Image(systemName: "square.and.pencil")
-                                        .resizable()
-                                        .frame(width: 13, height: 13)
-                                        .foregroundColor(.deepPurple)
-                                        .padding(.leading, 3)
-                                        .padding(.top, -3.5)
-                                        .onTapGesture {
-                                            tempDepositsValue = ""
-                                            showDepositsAlert = true
-                                        }
-                                }
-                                Spacer()
-                                HStack(spacing: 0) {
-                                    Text(Localized("unit_price_label") + ": ")
-                                        .font(.system(size: 12))
-                                        .foregroundColor(.text)
-                                    Text(org.unitPriceString)
-                                        .font(.system(size: 12))
-                                        .foregroundColor(.text)
-                                    Image(systemName: "square.and.pencil")
-                                        .resizable()
-                                        .frame(width: 13, height: 13)
-                                        .foregroundColor(.deepPurple)
-                                        .padding(.leading, 3)
-                                        .padding(.top, -3.5)
-                                        .onTapGesture {
-                                            tempUnitPriceValue = ""
-                                            showUnitPriceAlert = true
-                                        }
-                                }
-                            }
-                            
-                            HStack(alignment: .center, spacing: 0) {
-                                HStack(spacing: 0) {
-                                    Text(Localized("billing_cost_label") + ": ")
-                                        .font(.system(size: 12))
-                                        .foregroundColor(.text)
-                                    Text(org.billingCostString)
-                                        .font(.system(size: 12))
-                                        .foregroundColor(.text)
-                                }
-                                Spacer()
-                                HStack(spacing: 0) {
-                                    Text(Localized("balance_label") + ": ")
-                                        .font(.system(size: 12))
-                                        .foregroundColor(.text)
-                                    Text(org.balanceString)
-                                        .font(.system(size: 12))
-                                        .foregroundColor(org.balanceColor)
-                                }
-                            }
-                            
-                            HStack(alignment: .center, spacing: 0) {
-                                HStack(spacing: 0) {
-                                    Text(Localized("billing_date") + ": ")
-                                        .font(.system(size: 12))
-                                        .foregroundColor(.text)
-                                    Text(billingDateString)
-                                        .font(.system(size: 12))
-                                        .foregroundColor(.text)
-                                    Image(systemName: "calendar")
-                                        .resizable()
-                                        .frame(width: 12, height: 12)
-                                        .foregroundColor(.deepPurple)
-                                        .padding(.leading, 3)
-                                        .padding(.top, -1)
-                                        .onTapGesture {
-                                            showDatePicker = true
-                                        }
-                                    
-                                    if isRefreshing {
-                                        ProgressView()
-                                            .progressViewStyle(CircularProgressViewStyle(tint: .gray))
-                                            .scaleEffect(0.65)
-                                            .frame(width: 12, height: 12)
-                                            .padding(.leading, 5)
-                                            .padding(.bottom, 1)
+                    // 组织信息区
+                    VStack(spacing: vSpace) {
+                        HStack(alignment: .center, spacing: 0) {
+                            HStack(spacing: 0) {
+                                Text(Localized("total_deposits_label") + ": ")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.text)
+                                Text(org.totalDepositsString)
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.text)
+                                Image(systemName: "square.and.pencil")
+                                    .resizable()
+                                    .frame(width: 13, height: 13)
+                                    .foregroundColor(.deepPurple)
+                                    .padding(.leading, 3)
+                                    .padding(.top, -3.5)
+                                    .onTapGesture {
+                                        tempDepositsValue = ""
+                                        showDepositsAlert = true
                                     }
-                                }
-                                Spacer()
-                                HStack(spacing: 0) {
-                                    Text(Localized("region_label") + ": ")
-                                        .font(.system(size: 12))
-                                        .foregroundColor(.text)
-                                    Text(org.region.name)
-                                        .font(.system(size: 12))
-                                        .foregroundColor(.text)
-                                }
                             }
-                        }
-                        .padding(.top, 35)
-                        .padding(.horizontal, 20)
-                        
-                        // 统计周期
-                        VStack(alignment: .leading, spacing: vSpace) {
-                            Text(Localized("period_time") + ": \(period)")
-                                .font(.system(size: 12))
-                                .foregroundColor(.lightBlue)
-                            Text(Localized("period_cost_label") + ": \(org.periodCostString)")
-                                .font(.system(size: 12))
-                                .foregroundColor(.lightBlue)
-                        }
-                        .padding(.top, vSpace)
-                        .padding(.horizontal, 20)
-                        .padding(.bottom, 20)
-                        
-                        HStack(alignment: .bottom) {
-                            Text(Localized("study_table_title"))
-                                .font(.system(size: 12, weight: .medium))
-                                .padding(.vertical, 10)
                             Spacer()
-                        }
-                        .padding(.horizontal, 20)
-                        .background(Color(UIColor.systemGray6))
-
-                        ScrollView(.vertical, showsIndicators: false) {
-                            // 研究表格
-                            VStack(spacing: 0) {
-                                ScrollView(.horizontal, showsIndicators: false) {
-                                    VStack(spacing: 0) {
-                                        HStack(spacing: 0) {
-                                            Text(Localized("created_date")).frame(width: 70, alignment: .leading)
-                                            Text(Localized("study_name")).frame(width: 90, alignment: .leading)
-                                            Text(Localized("status")).frame(width: 50, alignment: .leading)
-                                            Text(Localized("unit_price_label")).frame(width: 70, alignment: .leading)
-                                            Text(Localized("success_count_label")).frame(width: AutoSize(70, 80), alignment: .leading)
-                                            Text(Localized("billing_cost_label")).frame(width: AutoSize(65, 60), alignment: .leading)
-                                            Text(Localized("period_success")).frame(width: AutoSize(70, 85), alignment: .leading)
-                                            Text(Localized("period_cost")).frame(width: AutoSize(65, 75), alignment: .leading)
-                                            Text(Localized("study_id")).frame(width: 60, alignment: .leading)
-                                        }
-                                        .font(.system(size: 8, weight: .medium))
-                                        .foregroundColor(.text)
-                                        .padding(.top, 12)
-                                        .padding(.bottom, 4)
-                                        .padding(.horizontal, 20)
-                                        .background(Color.white)
-                                        ForEach(studies.indices, id: \ .self) { idx in
-                                            StudyRowView(
-                                                study: studies[idx],
-                                                unitPrice: studies[idx].unitPrice ?? org.unitPrice,
-                                                onEditUnitPrice: { study in
-                                                    editingStudy = study
-                                                    tempStudyUnitPriceValue = study.unitPrice != nil ? formatUnitPrice(study.unitPrice!) : formatUnitPrice(org.unitPrice)
-                                                }
-                                            )
-                                            Divider()
-                                                .background(Color(UIColor.systemGray5))
-                                                .padding(.horizontal, 20)
-                                        }
-                                        StudySummaryRowView(
-                                            count: studies.count,
-                                            totalPeriodSuccessCount: totalPeriodSuccessCount,
-                                            totalBillingSuccessCount: totalBillingSuccessCount,
-                                            totalPeriodSuccessCost: totalPeriodSuccessCost,
-                                            billingCost: billingCost,
-                                            isPeriodCostHighlight: isPeriodCostHighlight,
-                                            isCostHighlight: isCostHighlight
-                                        )
+                            HStack(spacing: 0) {
+                                Text(Localized("unit_price_label") + ": ")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.text)
+                                Text(org.unitPriceString)
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.text)
+                                Image(systemName: "square.and.pencil")
+                                    .resizable()
+                                    .frame(width: 13, height: 13)
+                                    .foregroundColor(.deepPurple)
+                                    .padding(.leading, 3)
+                                    .padding(.top, -3.5)
+                                    .onTapGesture {
+                                        tempUnitPriceValue = ""
+                                        showUnitPriceAlert = true
                                     }
-                                }
-                                .enableSwipeBack()
                             }
-                            .background(Color.white)
-                            Spacer(minLength: 80)
                         }
+                        
+                        HStack(alignment: .center, spacing: 0) {
+                            HStack(spacing: 0) {
+                                Text(Localized("billing_cost_label") + ": ")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.text)
+                                Text(org.billingCostString)
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.text)
+                            }
+                            Spacer()
+                            HStack(spacing: 0) {
+                                Text(Localized("balance_label") + ": ")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.text)
+                                Text(org.balanceString)
+                                    .font(.system(size: 12))
+                                    .foregroundColor(org.balanceColor)
+                            }
+                        }
+                        
+                        HStack(alignment: .center, spacing: 0) {
+                            HStack(spacing: 0) {
+                                Text(Localized("billing_date") + ": ")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.text)
+                                Text(billingDateString)
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.text)
+                                Image(systemName: "calendar")
+                                    .resizable()
+                                    .frame(width: 12, height: 12)
+                                    .foregroundColor(.deepPurple)
+                                    .padding(.leading, 3)
+                                    .padding(.top, -1)
+                                    .onTapGesture {
+                                        showDatePicker = true
+                                    }
+                                
+                                if isRefreshing {
+                                    ProgressView()
+                                        .progressViewStyle(CircularProgressViewStyle(tint: .gray))
+                                        .scaleEffect(0.65)
+                                        .frame(width: 12, height: 12)
+                                        .padding(.leading, 5)
+                                        .padding(.bottom, 1)
+                                }
+                            }
+                            Spacer()
+                            HStack(spacing: 0) {
+                                Text(Localized("region_label") + ": ")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.text)
+                                Text(org.region.name)
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.text)
+                            }
+                        }
+                    }
+                    .padding(.top, 35)
+                    .padding(.horizontal, 20)
+                    
+                    // 统计周期
+                    VStack(alignment: .leading, spacing: vSpace) {
+                        Text(Localized("period_time") + ": \(period)")
+                            .font(.system(size: 12))
+                            .foregroundColor(.lightBlue)
+                        Text(Localized("period_cost_label") + ": \(org.periodCostString)")
+                            .font(.system(size: 12))
+                            .foregroundColor(.lightBlue)
+                    }
+                    .padding(.top, vSpace)
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 20)
+                    
+                    HStack(alignment: .bottom) {
+                        Text(Localized("study_table_title"))
+                            .font(.system(size: 12, weight: .medium))
+                            .padding(.vertical, 10)
+                        Spacer()
+                    }
+                    .padding(.horizontal, 20)
+                    .background(Color(UIColor.systemGray6))
+
+                    ScrollView(.vertical, showsIndicators: false) {
+                        // 研究表格
+                        VStack(spacing: 0) {
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                VStack(spacing: 0) {
+                                    HStack(spacing: 0) {
+                                        Text(Localized("created_date")).frame(width: 70, alignment: .leading)
+                                        Text(Localized("study_name")).frame(width: 90, alignment: .leading)
+                                        Text(Localized("status")).frame(width: 50, alignment: .leading)
+                                        Text(Localized("unit_price_label")).frame(width: 70, alignment: .leading)
+                                        Text(Localized("success_count_label")).frame(width: AutoSize(70, 80), alignment: .leading)
+                                        Text(Localized("billing_cost_label")).frame(width: AutoSize(65, 60), alignment: .leading)
+                                        Text(Localized("period_success")).frame(width: AutoSize(70, 85), alignment: .leading)
+                                        Text(Localized("period_cost")).frame(width: AutoSize(65, 75), alignment: .leading)
+                                        Text(Localized("study_id")).frame(width: 60, alignment: .leading)
+                                    }
+                                    .font(.system(size: 8, weight: .medium))
+                                    .foregroundColor(.text)
+                                    .padding(.top, 12)
+                                    .padding(.bottom, 4)
+                                    .padding(.horizontal, 20)
+                                    .background(Color.white)
+                                    ForEach(studies.indices, id: \ .self) { idx in
+                                        StudyRowView(
+                                            study: studies[idx],
+                                            unitPrice: studies[idx].unitPrice ?? org.unitPrice,
+                                            onEditUnitPrice: { study in
+                                                editingStudy = study
+                                                tempStudyUnitPriceValue = study.unitPrice != nil ? formatUnitPrice(study.unitPrice!) : formatUnitPrice(org.unitPrice)
+                                            }
+                                        )
+                                        Divider()
+                                            .background(Color(UIColor.systemGray5))
+                                            .padding(.horizontal, 20)
+                                    }
+                                    StudySummaryRowView(
+                                        count: studies.count,
+                                        totalPeriodSuccessCount: totalPeriodSuccessCount,
+                                        totalBillingSuccessCount: totalBillingSuccessCount,
+                                        totalPeriodSuccessCost: totalPeriodSuccessCost,
+                                        billingCost: billingCost,
+                                        isPeriodCostHighlight: isPeriodCostHighlight,
+                                        isCostHighlight: isCostHighlight
+                                    )
+                                }
+                            }
+                            .enableSwipeBack()
+                        }
+                        .background(Color.white)
+                        Spacer(minLength: 80)
                     }
                 }
             }
@@ -308,7 +306,7 @@ struct BillingDetailView: View {
                 }
                 .padding(.horizontal, 50)
             }
-            .presentationDetents([.medium])
+            .presentationDetents(UIDevice.current.isIPad ? [.large] : [.medium])
             .onDisappear {
                 if org.billingDate != tempBillingDate {
                     org.billingDate = tempBillingDate

@@ -36,7 +36,7 @@ struct AnalysisView: View {
 
     private var navigationTitleText: String {
         let trimmed = (companyName ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? "全部" : trimmed
+        return trimmed.isEmpty ? Localized("analysis_title_all") : trimmed
     }
 
     var body: some View {
@@ -494,13 +494,13 @@ private struct LoadingView: View {
             }
             .frame(width: 120, height: 120)
 
-            Text("正在加载数据…")
+            Text(Localized("analysis_loading"))
                 .font(.system(size: 14))
                 .foregroundStyle(.secondary)
 
             Spacer()
 
-            Text("首次加载数据可能会比较久，请耐心等待！")
+            Text(Localized("analysis_loading_tip"))
                 .font(.system(size: 15))
                 .foregroundStyle(.blue)
                 .padding(.bottom, 30)

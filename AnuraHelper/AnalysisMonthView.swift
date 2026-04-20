@@ -22,15 +22,15 @@ struct AnalysisMonthView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("6个月测量趋势")
+            Text(Localized("analysis_month_title"))
                 .font(.system(size: 18, weight: .semibold))
                 .foregroundColor(.primary)
 
             Chart {
                 ForEach(data) { item in
                     BarMark(
-                        x: .value("月份", item.monthStart),
-                        y: .value("测量次数", item.count),
+                        x: .value(Localized("analysis_axis_month"), item.monthStart),
+                        y: .value(Localized("analysis_axis_measurement_count"), item.count),
                         width: .fixed(22)
                     )
                     .foregroundStyle(isSelected(item.monthStart) ? Color.orange : Color.blue)
@@ -38,7 +38,7 @@ struct AnalysisMonthView: View {
                 }
 
                 if let selected = selectedDataPoint {
-                    RuleMark(x: .value("选中月份", selected.monthStart))
+                    RuleMark(x: .value(Localized("analysis_selected_month"), selected.monthStart))
                         .foregroundStyle(.gray.opacity(0.35))
                         .lineStyle(.init(lineWidth: 1, dash: [4, 4]))
                 }
@@ -92,11 +92,11 @@ struct AnalysisMonthView: View {
             }
 
             if let selected = selectedDataPoint {
-                Text("已选中：\(Self.yearMonthLabel(for: selected.monthStart))，测量次数：\(selected.count)")
+                Text(String(format: Localized("analysis_selected_month_format"), Self.yearMonthLabel(for: selected.monthStart), formatCount(selected.count)))
                     .font(.system(size: 13))
                     .foregroundColor(.secondary)
             } else {
-                Text("点击柱子查看该月测量次数")
+                Text(Localized("analysis_month_hint"))
                     .font(.system(size: 13))
                     .foregroundColor(.secondary)
             }
@@ -125,8 +125,8 @@ struct AnalysisMonthView: View {
 
     private static func monthLabel(for date: Date) -> String {
         let formatter = DateFormatter()
-        formatter.dateFormat = "MM月"
-        return formatter.string(from: date)
+        formatter.dateFormat = "MM"
+        return String(format: Localized("analysis_month_label_format"), formatter.string(from: date))
     }
 
     private static func yearMonthLabel(for date: Date) -> String {
