@@ -52,7 +52,7 @@ struct RefreshButton: View {
             }
         }
         .padding(.trailing, Style.paddingTrailing)
-        .onChange(of: isRefreshing) { refreshing in
+        .onChange(of: isRefreshing) { _, refreshing in
             if refreshing {
                 startRotationAnimation()
             } else {
@@ -60,7 +60,7 @@ struct RefreshButton: View {
                 timer = nil
             }
         }
-        .onChange(of: refreshCompleted) { completed in
+        .onChange(of: refreshCompleted) { _, completed in
             if completed && isRefreshing {
                 timer?.invalidate()
                 timer = nil

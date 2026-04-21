@@ -297,7 +297,7 @@ struct BillingListView: View {
                             }
                             .opacity(0)
                             .buttonStyle(PlainButtonStyle())
-                            
+
                             BillingOrgCard(org: org)
                                 .disabled(true)
                         }
@@ -307,7 +307,8 @@ struct BillingListView: View {
                     }
                 }
                 .listStyle(.plain)
-                
+                .padding(.horizontal, UIDevice.current.isIPad ? 150 : 0)
+
                 // 底部刷新按钮和返回按钮
                 HStack {
                     Button(action: {
@@ -419,7 +420,6 @@ struct BillingListView: View {
                     }
                 }
             )
-
             .sheet(isPresented: $isStartDatePickerPresented) {
                 VStack {
                     DatePicker(Localized("select_start_time"), selection: $startDate, in: ...endDate, displayedComponents: .date)
@@ -492,6 +492,9 @@ struct BillingListView: View {
         }
         .navigationBarHidden(true)
         .onAppear {
+            if #unavailable(iOS 26) {
+                setNavigationBarAppearance()
+            }
             if orgList.orgs.isEmpty && !isRefreshing {
                 if let period = SharedUsers.first?.period {
                     selectedFilter = period
@@ -805,6 +808,31 @@ extension BillingListView {
         if selectedFilter == .none { return nil }
         guard let studyArray = studies[user.key] else { return 0 }
         return studyArray.compactMap { $0.periodSuccessMeasurements ?? $0.totalSuccessMeasurements }.reduce(0, +)
+    }
+}
+
+extension BillingListView {
+    func setNavigationBarAppearance() {
+        // 仅控制返回箭头样式与位置，不隐藏返回文字
+        let appearance = UINavigationBarAppearance()
+        appearance.configureWithDefaultBackground()
+
+        // 返回按钮文字隐藏
+        let back = UIBarButtonItemAppearance()
+        back.normal.titleTextAttributes = [.foregroundColor: UIColor.clear]
+        back.highlighted.titleTextAttributes = [.foregroundColor: UIColor.clear]
+        back.disabled.titleTextAttributes = [.foregroundColor: UIColor.clear]
+        appearance.backButtonAppearance = back
+
+        let base = UIImage(systemName: "chevron.backward")
+        let shifted = base?.withAlignmentRectInsets(UIEdgeInsets(top: 0, left: -10, bottom: 0, right: 10))
+        let grayShifted = shifted?.withTintColor(.gray, renderingMode: .alwaysOriginal)
+        appearance.setBackIndicatorImage(grayShifted, transitionMaskImage: grayShifted)
+
+        let navBar = UINavigationBar.appearance()
+        navBar.standardAppearance = appearance
+        navBar.scrollEdgeAppearance = appearance
+        navBar.compactAppearance = appearance
     }
 }
 

@@ -38,6 +38,7 @@ struct ToastView: View {
 
 struct BillingSendingView: View {
     @Environment(\.presentationMode) var presentationMode
+    @Environment(\.dismiss) private var dismiss
     let orgList: OrgListModel
     @State private var content: String = ""
     @State private var showFullPreview = false

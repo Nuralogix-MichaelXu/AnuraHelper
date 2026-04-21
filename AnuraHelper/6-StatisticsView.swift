@@ -10,6 +10,7 @@ import SwiftUI
 struct StatisticsView: View {
     @ObservedObject var orgList: OrgListModel
     @State private var selectedTab: StatisticsTab = .bill
+    @Environment(\.dismiss) private var dismiss
 
     private var companyAggregates: [CompanyAggregate] {
         var map: [String: CompanyAggregate] = [:]
@@ -91,14 +92,13 @@ struct StatisticsView: View {
                             OrgStatCardView(index: index + 1, item: item, isBilling: selectedTab == .bill )
                         }
                     }
-                    .background(.subBackgound)
                     .clipShape(RoundedRectangle(cornerRadius: 3, style: .continuous))
                     .padding(.horizontal, 8)
                     .padding(.top, 5)
                     .padding(.bottom, 24)
                 }
-
             }
+            .padding(.top, UIDevice.current.isIPad ? 10 : 5)
         }
         .navigationTitle(Localized("statistics_billing_title"))
         .navigationBarTitleDisplayMode(.inline)
@@ -120,7 +120,6 @@ struct StatisticsView: View {
             Spacer()
         }
         .padding(.top, 10)
-        .padding(.bottom, 15)
     }
 
     private func segmentButton(title: String, tab: StatisticsTab) -> some View {
@@ -152,6 +151,7 @@ struct StatisticsView: View {
             .frame(maxWidth: .infinity)
             .frame(height: 30)
             .background(.thirdBackgound.opacity(0.5))
+            .padding(.top, 15)
     }
 
     private static func companyName(from orgName: String) -> String {

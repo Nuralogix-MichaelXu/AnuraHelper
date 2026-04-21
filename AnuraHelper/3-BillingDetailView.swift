@@ -176,7 +176,7 @@ struct BillingDetailView: View {
                                     .padding(.bottom, 4)
                                     .padding(.horizontal, 20)
                                     .background(Color.white)
-                                    ForEach(studies.indices, id: \ .self) { idx in
+                                    ForEach(studies.indices, id: \.self) { idx in
                                         StudyRowView(
                                             study: studies[idx],
                                             unitPrice: studies[idx].unitPrice ?? org.unitPrice,
@@ -211,6 +211,7 @@ struct BillingDetailView: View {
         }
         .navigationBarHidden(false)
         .navigationBarTitle(org.name, displayMode: .inline)
+        // 保留系统返回按钮（支持侧滑返回）；返回文字/颜色/位置由 BillingListView 的 appearance 统一控制
         .alert(Localized("input_deposits_title"), isPresented: $showDepositsAlert, actions: {
             TextField(Localized("input_deposits_placeholder"), text: $tempDepositsValue)
                 .keyboardType(.decimalPad)
@@ -306,7 +307,7 @@ struct BillingDetailView: View {
                 }
                 .padding(.horizontal, 50)
             }
-            .presentationDetents(UIDevice.current.isIPad ? [.large] : [.medium])
+            .presentationDetents([UIDevice.current.isIPad ? .large : .medium])
             .onDisappear {
                 if org.billingDate != tempBillingDate {
                     org.billingDate = tempBillingDate

@@ -17,6 +17,7 @@ struct MonthMeasurement: Identifiable {
 }
 
 struct AnalysisView: View {
+    @Environment(\.dismiss) private var dismiss
     /// companyName：StatisticsView 聚合后的公司名（根据 orgName 下划线前缀）
     let companyName: String?
 

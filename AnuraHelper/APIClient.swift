@@ -92,7 +92,7 @@ extension APIClient {
 
             var nextIndex = 0
             try await withThrowingTaskGroup(of: (Int, Int?).self) { group in
-                // 先启动最多2个任务
+                // 先启动最多10个任务
                 while nextIndex < min(10, studies.count) {
                     let index = nextIndex
                     let study = studies[index]
@@ -257,7 +257,7 @@ class APIClient {
             request.httpBody = try? JSONSerialization.data(withJSONObject: params, options: [])
         }
         
-//         print("API->: \(requestURL)")
+//         print("0000 - API->: \(requestURL)")
 
         let task = URLSession.shared.dataTask(with: request) { data, response, error in
             if let error = error {
@@ -277,6 +277,7 @@ class APIClient {
                 completion(.failure(apiError))
                 return
             }
+//            print("1111 - API->: \(requestURL)")
             completion(.success(data))
         }
         task.resume()
