@@ -137,8 +137,9 @@
 "analysis_selected_measurement_count" = "选中测量次数";
 "analysis_selected_day_format" = "已选中：%1$@，测量次数：%2$@";
 "analysis_selected_month_format" = "已选中：%1$@，测量次数：%2$@";
-"analysis_day_hint" = "可左右滑动查看更多日期，短按折线图或点查看当天测量次数";
+"analysis_day_hint" = "可左右滑动查看更多日期，点击折线图或点查看当天测量次数";
 "analysis_month_hint" = "点击柱子查看该月测量次数";
 "analysis_month_label_format" = "%@月";
 "analysis_loading" = "正在加载数据…";
 "analysis_loading_tip" = "首次加载数据可能会比较久，请耐心等待！";
+"select_org_to_view_detail" = "数据加载中...";

@@ -69,109 +69,74 @@ struct LoginView: View {
     @State private var isNetworkAvailable = true // 新增网络状态
     private let monitor = NWPathMonitor()
     private let monitorQueue = DispatchQueue(label: "NetworkMonitor")
+
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
     
     var body: some View {
-        NavigationStack {
-            ZStack {
-                Color.white.ignoresSafeArea()
-                VStack(alignment: .center, spacing: 0) {
-                    // 标题
-                    LocalizedText("login_title", font: .system(size: 20, weight: .medium), color: .text)
-                        .padding(.top, 80)
-                        .padding(.bottom, 60)
-                    
-                    // 输入区域（单账号/多账号切换）
-                    LoginInputArea(
-                        isMultiAccountMode: isMultiAccountMode,
-                        orgName: $orgName,
-                        email: $email,
-                        password: $password,
-                        multiAccountText: $multiAccountText,
-                        region: $region
-                    )
-                                
-                    // 切换按钮（右下角）
-                    HStack {
-                        Spacer()
-                        Button(action: {
-                            isMultiAccountMode.toggle()
-                        }) {
-                            LocalizedText(isMultiAccountMode ? "login_mode_normal" : "login_mode_multi", font: .system(size: 14, weight: .medium), color: .lightBlue)
-                        }
-                    }
-                    .padding(.horizontal, 30)
-                    .padding(.top, 30)
-                    .padding(.bottom, 83)
+        GeometryReader { proxy in
+            let isLandscape = proxy.size.width > proxy.size.height
+            NavigationStack {
+                ZStack {
+                    Color.white.ignoresSafeArea()
 
-                    // 登录按钮
-                    LoginButton(isLoading: isLoading) {
-                        UIApplication.shared.resignFirstResponder()
-                        if !isNetworkAvailable {
-                            alertManager.showAlert(title: Localized("alert_title"), message: Localized("network_unavailable"))
-                            return
-                        }
-                        isLoading = true
-                        Task {
-                            await login()
+                    Group {
+                        if isLandscape {
+                            ScrollView(.vertical, showsIndicators: false) {
+                                loginContent
+                                    .frame(maxWidth: 520)
+                                    .frame(maxWidth: .infinity)
+                            }
+                        } else {
+                            loginContent
+                                .frame(maxWidth: 520)
+                                .frame(maxWidth: .infinity)
                         }
                     }
-                    
-                    // 底部说明文字
-                    BottomNote(text: Localized("login_note"))
-                        .padding(.top, 20)
-                        .frame(width: 250)
-                    
-                    Spacer()
-
-                    // 底部logo
-                    LogoImage(image: .companyLogo)
-                        .padding(.bottom, 10)
-                    VersionLabel()
-                        .padding(.bottom, 5)
+                    .alert(isPresented: $alertManager.isPresented) {
+                        Alert(
+                            title: Text(alertManager.title),
+                            message: Text(alertManager.message),
+                            dismissButton: .default(Text(alertManager.buttonText)) {
+                                alertManager.onDismiss?()
+                            }
+                        )
+                    }
+                    // 跳转至BillingListView
+                    .navigationDestination(isPresented: $isBillingListActive) {
+                        BillingListView().navigationBarHidden(true)
+                    }
                 }
-                .alert(isPresented: $alertManager.isPresented) {
-                    Alert(
-                        title: Text(alertManager.title),
-                        message: Text(alertManager.message),
-                        dismissButton: .default(Text(alertManager.buttonText)) {
-                            alertManager.onDismiss?()
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    resignFirstResponder()
+                }
+                .onAppear {
+                    // 启动时自动跳转
+                    if isFirstCheck {
+                        let users = UserStorage.load()
+                        if !users.isEmpty {
+                            SharedUsers = users
+                            isBillingListActive = true
                         }
-                    )
-                }
-                // 跳转至BillingListView
-                .navigationDestination(isPresented: $isBillingListActive) {
-                    BillingListView().navigationBarHidden(true)
-                }
-            }
-            .contentShape(Rectangle())
-            .onTapGesture {
-                resignFirstResponder()
-            }
-            .onAppear {
-                // 启动时自动跳转
-                if isFirstCheck {
-                    let users = UserStorage.load()
-                    if !users.isEmpty {
-                        SharedUsers = users
-                        isBillingListActive = true
+                        isFirstCheck = false
                     }
-                    isFirstCheck = false
-                }
-                // 启动网络监控
-                monitor.pathUpdateHandler = { path in
-                    DispatchQueue.main.async {
-                        isNetworkAvailable = (path.status == .satisfied)
+                    // 启动网络监控
+                    monitor.pathUpdateHandler = { path in
+                        DispatchQueue.main.async {
+                            isNetworkAvailable = (path.status == .satisfied)
+                        }
                     }
+                    monitor.start(queue: monitorQueue)
                 }
-                monitor.start(queue: monitorQueue)
-            }
-            .onDisappear {
-                monitor.cancel()
-            }
-            // 右上角语言切换按钮
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    LanguageSwitchButton()
+                .onDisappear {
+                    monitor.cancel()
+                }
+                // 右上角语言切换按钮
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        LanguageSwitchButton()
+                    }
                 }
             }
         }
@@ -180,7 +145,65 @@ struct LoginView: View {
             isMultiAccountMode = UserDefaults.standard.bool(forKey: "isMultiAccountMode")
         }
     }
-    
+
+    private var loginContent: some View {
+        VStack(alignment: .center, spacing: 0) {
+            // 标题
+            LocalizedText("login_title", font: .system(size: 20, weight: .medium), color: .text)
+                .padding(.top, 80)
+                .padding(.bottom, 60)
+            
+            // 输入区域（单账号/多账号切换）
+            LoginInputArea(
+                isMultiAccountMode: isMultiAccountMode,
+                orgName: $orgName,
+                email: $email,
+                password: $password,
+                multiAccountText: $multiAccountText,
+                region: $region
+            )
+                        
+            // 切换按钮（右下角）
+            HStack {
+                Spacer()
+                Button(action: {
+                    isMultiAccountMode.toggle()
+                }) {
+                    LocalizedText(isMultiAccountMode ? "login_mode_normal" : "login_mode_multi", font: .system(size: 14, weight: .medium), color: .lightBlue)
+                }
+            }
+            .padding(.horizontal, 30)
+            .padding(.top, 30)
+            .padding(.bottom, 83)
+
+            // 登录按钮
+            LoginButton(isLoading: isLoading) {
+                UIApplication.shared.resignFirstResponder()
+                if !isNetworkAvailable {
+                    alertManager.showAlert(title: Localized("alert_title"), message: Localized("network_unavailable"))
+                    return
+                }
+                isLoading = true
+                Task {
+                    await login()
+                }
+            }
+            
+            // 底部说明文字
+            BottomNote(text: Localized("login_note"))
+                .padding(.top, 20)
+                .frame(width: 250)
+            
+            Spacer(minLength: 90)
+
+            // 底部logo
+            LogoImage(image: .companyLogo)
+                .padding(.bottom, 10)
+            VersionLabel()
+                .padding(.bottom, 5)
+        }
+    }
+
     func resignFirstResponder() {
         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }

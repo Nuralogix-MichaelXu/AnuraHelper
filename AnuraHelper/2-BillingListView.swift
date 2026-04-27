@@ -111,7 +111,7 @@ struct BillingListView: View {
             } else {
                 endDateString = Localized("until_now")
             }
-            
+
             var shouldSavedEndDate = savedEndDate
             let calendar = Calendar.current
             if calendar.isDate(shouldSavedEndDate ?? Date(), inSameDayAs: Date()) {
@@ -129,169 +129,322 @@ struct BillingListView: View {
     @State private var isMenuOpen = false
     @State private var isExpanded = false
     @State private var currentTask: Task<Void, Never>? = nil // 新增: 当前请求任务
-    
+
+    // iPad 横屏分栏：当前选中的 org index
+    @State private var selectedOrgIndex: Int? = nil
+
+    private var isSplitMode: Bool {
+        UIDevice.current.isIPad && UIScreen.main.bounds.width > UIScreen.main.bounds.height
+    }
+
     var body: some View {
-        NavigationStack {
+        GeometryReader { proxy in
+            let isLandscape = proxy.size.width > proxy.size.height
+            let useSplitOnIPadLandscape = UIDevice.current.isIPad && isLandscape
+
+            Group {
+                if useSplitOnIPadLandscape {
+                    NavigationStack {
+                        splitLayout
+                    }
+                } else {
+                    NavigationStack {
+                        singleColumnLayout
+                    }
+                }
+            }
+            // Put modifiersLayer once at the top level so it always renders above content
+            .overlay(modifiersLayer)
+        }
+    }
+
+    // MARK: - iPad 横屏分栏布局
+
+    private var splitLayout: some View {
+        HStack(spacing: 0) {
+            // 左侧：列表
             VStack(spacing: 0) {
-                // 顶部日期选择和按钮
-                HStack(alignment: .bottom, spacing: 5) {
-                    if isCustomDatePickerPresented {
-                        HStack(alignment: .bottom, spacing: 0) {
-                            VStack(alignment: .leading, spacing: 8) {
-                                HStack(spacing: 5) {
-                                    Image(systemName: "calendar")
-                                        .resizable()
-                                        .frame(width: 11, height: 11)
-                                        .foregroundColor(Color.text)
-                                    LocalizedText("start_time", font: .system(size: 11), color: .text)
-                                        .frame(width: 60, alignment: .leading)
-                                }
+                header
+                footer
+            }
+            .frame(width: 420)
+            .background(Color.white)
 
-                                Text(startDateString)
-                                    .font(.system(size: 11))
-                                    .frame(width: 80)
-                                    .foregroundColor(.lightBlue)
-                                    .padding(.vertical, 6)
-                                    .background(.lightPurple)
-                                    .cornerRadius(5)
-                                    .onTapGesture {
-                                        isStartDatePickerPresented = true
-                                    }
-                            }
-                            Text("~")
-                                .font(.system(size: 18))
-                                .foregroundColor(.gray)
-                                .padding(.bottom, 3)
-                                .frame(width: 25)
-                            VStack(alignment: .leading, spacing: 8) {
-                                HStack(spacing: 5) {
-                                    Image(systemName: "calendar")
-                                        .resizable()
-                                        .frame(width: 11, height: 11)
-                                        .foregroundColor(Color.text)
-                                    LocalizedText("end_time", font: .system(size: 11), color: .text)
-                                        .frame(width: 60, alignment: .leading)
-                                }
+            Divider().background(Color(UIColor.systemGray5))
 
-                                Text(endDateString)
-                                    .font(.system(size: 11))
-                                    .frame(width: 80)
-                                    .foregroundColor(.lightBlue)
-                                    .padding(.vertical, 6)
-                                    .background(.lightPurple)
-                                    .cornerRadius(5)
-                                    .onTapGesture {
-                                        isEndDatePickerPresented = true
-                                    }
-                            }
-                            
-                            Button(action: {
-                                withAnimation(.easeInOut(duration: 0.25)) {
-                                    isCustomDatePickerPresented = false
-                                }
-                                if lastSelectedFilter == .custom {
-                                    lastSelectedFilter = .none
-                                }
-                                selectedFilter = lastSelectedFilter
-                                performFilter(lastSelectedFilter, savedUpdateTime != orgList.updateTime ? true : false)
-                            }) {
-                                Image(systemName: "arrowshape.turn.up.backward.fill")
-                                    .resizable()
-                                    .frame(width: 15, height: 15)
-                                    .foregroundColor(.lightPurple)
-                                    .padding(6)
-                            }
+            // 右侧：详情
+            ZStack {
+                Color.white
+                if let index = selectedOrgIndex, orgList.orgs.indices.contains(index) {
+                    BillingDetailView(org: $orgList.orgs[index], period: orgList.billingPeriod)
+                        .navigationBarHidden(false)
+                } else {
+                    VStack(spacing: 12) {
+                        Image(systemName: "doc.text.magnifyingglass")
+                            .font(.system(size: 28))
+                            .foregroundColor(.gray.opacity(0.6))
+                        Text(Localized("select_org_to_view_detail"))
+                            .font(.system(size: 14))
+                            .foregroundColor(.gray)
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .background(Color.white)
+        .navigationBarHidden(true)
+        .onAppear {
+            if selectedOrgIndex == nil, !orgList.orgs.isEmpty {
+                selectedOrgIndex = 0
+            }
+            if #unavailable(iOS 26) {
+                setNavigationBarAppearance()
+            }
+            if orgList.orgs.isEmpty && !isRefreshing {
+                if let period = SharedUsers.first?.period {
+                    selectedFilter = period
+                    if period == .custom {
+                        isCustomDatePickerPresented = true
+                        if let start = SharedUsers.first?.customPeriodStartDate {
+                            startDate = start
+                            savedStartDate = startDate
+                        } else {
+                            startDate = kInitialStartDate
+                            savedStartDate = startDate
                         }
-
-                    } else {
-                        VStack(alignment: .leading, spacing: 0) {
-                            HStack {
-                                LocalizedText("period_select", font: .system(size: 12), color: .text.opacity(0.75))
-                                    .padding(.trailing, 5)
-
-                                // 自定义下拉菜单按钮
-                                Button(action: {
-                                    isMenuOpen.toggle()
-                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) {
-                                        isExpanded = true
-                                    }
-                                }) {
-                                    HStack {
-                                        Text(selectedFilter.shortString)
-                                            .font(.system(size: 11, weight: .medium))
-                                            .foregroundColor(.lightBlue)
-                                            .lineLimit(1)
-                                        Image(systemName: "chevron.down")
-                                            .font(.system(size: 12))
-                                            .foregroundColor(.lightBlue)
-                                            .rotationEffect(.degrees(isMenuOpen ? 180 : 0))
-                                    }
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 6)
-                                    .background(Color.lightPurple)
-                                    .cornerRadius(5)
-                                }
-                                
-                                Spacer()
-                            }
-                            .zIndex(1)
-                            
+                        if let end = SharedUsers.first?.customPeriodEndDate {
+                            endDate = end
+                            savedEndDate = endDate
+                        } else {
+                            endDate = Date()
+                            savedEndDate = nil
                         }
                     }
-                    
-                    Spacer()
-                    
-                    NavigationLink(destination: StatisticsView(orgList: orgList)) {
-                            LocalizedText("statistics_billing_title", font: .system(size: 9), color: .white)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 8)
-                                .background(Color.deepPurple)
-                                .cornerRadius(5)
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                        .disabled(orgList.orgs.isEmpty)
+                } else {
+                    selectedFilter = .none
+                }
+                performFilter(selectedFilter)
+            }
+        }
+    }
 
-                    NavigationLink(destination: BillingSendingView(orgList: orgList)) {
-                        LocalizedText("send_bill", font: .system(size: 9), color: .white)
+    // MARK: - 单栏（iPhone / iPad竖屏）布局（保持原有）
+
+    private var singleColumnLayout: some View {
+        VStack(spacing: 0) {
+            header
+            footer
+        }
+        .background(Color.white)
+        .navigationBarHidden(true)
+        .onAppear {
+            if #unavailable(iOS 26) {
+                setNavigationBarAppearance()
+            }
+            if orgList.orgs.isEmpty && !isRefreshing {
+                if let period = SharedUsers.first?.period {
+                    selectedFilter = period
+                    if period == .custom {
+                        isCustomDatePickerPresented = true
+                        if let start = SharedUsers.first?.customPeriodStartDate {
+                            startDate = start
+                            savedStartDate = startDate
+                        } else {
+                            startDate = kInitialStartDate
+                            savedStartDate = startDate
+                        }
+                        if let end = SharedUsers.first?.customPeriodEndDate {
+                            endDate = end
+                            savedEndDate = endDate
+                        } else {
+                            endDate = Date()
+                            savedEndDate = nil
+                        }
+                    }
+                } else {
+                    selectedFilter = .none
+                }
+                performFilter(selectedFilter)
+            }
+        }
+    }
+
+    // MARK: - 复用子视图
+
+    private var header: some View {
+        VStack(spacing: 0) {
+            // 顶部日期选择和按钮
+            HStack(alignment: .bottom, spacing: 5) {
+                if isCustomDatePickerPresented {
+                    HStack(alignment: .bottom, spacing: 0) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack(spacing: 5) {
+                                Image(systemName: "calendar")
+                                    .resizable()
+                                    .frame(width: 11, height: 11)
+                                    .foregroundColor(Color.text)
+                                LocalizedText("start_time", font: .system(size: 11), color: .text)
+                                    .frame(width: 60, alignment: .leading)
+                            }
+
+                            Text(startDateString)
+                                .font(.system(size: 11))
+                                .frame(width: 80)
+                                .foregroundColor(.lightBlue)
+                                .padding(.vertical, 6)
+                                .background(.lightPurple)
+                                .cornerRadius(5)
+                                .onTapGesture {
+                                    isStartDatePickerPresented = true
+                                }
+                        }
+                        Text("~")
+                            .font(.system(size: 18))
+                            .foregroundColor(.gray)
+                            .padding(.bottom, 3)
+                            .frame(width: 25)
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack(spacing: 5) {
+                                Image(systemName: "calendar")
+                                    .resizable()
+                                    .frame(width: 11, height: 11)
+                                    .foregroundColor(Color.text)
+                                LocalizedText("end_time", font: .system(size: 11), color: .text)
+                                    .frame(width: 60, alignment: .leading)
+                            }
+
+                            Text(endDateString)
+                                .font(.system(size: 11))
+                                .frame(width: 80)
+                                .foregroundColor(.lightBlue)
+                                .padding(.vertical, 6)
+                                .background(.lightPurple)
+                                .cornerRadius(5)
+                                .onTapGesture {
+                                    isEndDatePickerPresented = true
+                                }
+                        }
+                        
+                        Button(action: {
+                            withAnimation(.easeInOut(duration: 0.25)) {
+                                isCustomDatePickerPresented = false
+                            }
+                            if lastSelectedFilter == .custom {
+                                lastSelectedFilter = .none
+                            }
+                            selectedFilter = lastSelectedFilter
+                            performFilter(lastSelectedFilter, savedUpdateTime != orgList.updateTime ? true : false)
+                        }) {
+                            Image(systemName: "arrowshape.turn.up.backward.fill")
+                                .resizable()
+                                .frame(width: 15, height: 15)
+                                .foregroundColor(.lightPurple)
+                                .padding(6)
+                        }
+                    }
+
+                } else {
+                    VStack(alignment: .leading, spacing: 0) {
+                        HStack {
+                            LocalizedText("period_select", font: .system(size: 12), color: .text.opacity(0.75))
+                                .padding(.trailing, 5)
+
+                            // 自定义下拉菜单按钮
+                            Button(action: {
+                                isMenuOpen.toggle()
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) {
+                                    isExpanded = true
+                                }
+                            }) {
+                                HStack {
+                                    Text(selectedFilter.shortString)
+                                        .font(.system(size: 11, weight: .medium))
+                                        .foregroundColor(.lightBlue)
+                                        .lineLimit(1)
+                                    Image(systemName: "chevron.down")
+                                        .font(.system(size: 12))
+                                        .foregroundColor(.lightBlue)
+                                        .rotationEffect(.degrees(isMenuOpen ? 180 : 0))
+                                }
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(Color.lightPurple)
+                                .cornerRadius(5)
+                            }
+                            
+                            Spacer()
+                        }
+                        .zIndex(1)
+                        
+                    }
+                }
+                
+                Spacer()
+                
+                NavigationLink(destination: StatisticsView(orgList: orgList)) {
+                        LocalizedText("statistics_billing_title", font: .system(size: 9), color: .white)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 8)
                             .background(Color.deepPurple)
                             .cornerRadius(5)
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                    .disabled(orgList.orgs.isEmpty)
-                }
-                .padding(.top, 25)
-                .padding(.horizontal, 20)
-                .padding(.bottom, 10)
-                
-                Divider()
-                    .background(Color(UIColor.systemGray5))
-                // 刷新进度条
-                // 在进度条区域外层加动画和过渡
-                if isRefreshing && totalRequests > 0 {
-                    HStack {
-                        ProgressView(value: min(max(completedRequests, 0), totalRequests), total: totalRequests)
-                            .progressViewStyle(LinearProgressViewStyle(tint: .green))
-                            .frame(height: 8)
-                        let progress = totalRequests == 0 ? 0 : Int(min(max(completedRequests, 0), totalRequests) / totalRequests * 100)
-                        Text("\(progress)%")
-                            .font(.system(size: 10, weight: .medium))
-                            .foregroundColor(.green)
-                            .frame(alignment: .trailing)
-                    }
-                    .padding(.trailing, 5)
-                    .onDisappear {
-                        completedRequests = 0
-                        progressTimer?.invalidate()
-                        progressTimer = nil
-                    }
-                }
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .disabled(orgList.orgs.isEmpty)
 
-                // 卡片列表
-                List {
-                    ForEach(Array(orgList.orgs.enumerated()), id: \.element.id) { index, org in
-                        ZStack(alignment: .top) {
+                NavigationLink(destination: BillingSendingView(orgList: orgList)) {
+                    LocalizedText("send_bill", font: .system(size: 9), color: .white)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 8)
+                        .background(Color.deepPurple)
+                        .cornerRadius(5)
+                }
+                .buttonStyle(PlainButtonStyle())
+                .disabled(orgList.orgs.isEmpty)
+            }
+            .padding(.top, 25)
+            .padding(.horizontal, 20)
+            .padding(.bottom, 10)
+            
+            Divider()
+                .background(Color(UIColor.systemGray5))
+            // 刷新进度条
+            // 在进度条区域外层加动画和过渡
+            if isRefreshing && totalRequests > 0 {
+                HStack {
+                    ProgressView(value: min(max(completedRequests, 0), totalRequests), total: totalRequests)
+                        .progressViewStyle(LinearProgressViewStyle(tint: .green))
+                        .frame(height: 8)
+                    let progress = totalRequests == 0 ? 0 : Int(min(max(completedRequests, 0), totalRequests) / totalRequests * 100)
+                    Text("\(progress)%")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundColor(.green)
+                        .frame(alignment: .trailing)
+                }
+                .padding(.trailing, 5)
+                .onDisappear {
+                    completedRequests = 0
+                    progressTimer?.invalidate()
+                    progressTimer = nil
+                }
+            }
+
+            // 卡片列表
+            List {
+                ForEach(Array(orgList.orgs.enumerated()), id: \.element.id) { index, org in
+                    ZStack(alignment: .top) {
+                        if isSplitMode {
+                            Button {
+                                selectedOrgIndex = index
+                            } label: {
+                                BillingOrgCard(org: org)
+                                    .disabled(true)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                            .stroke(selectedOrgIndex == index ? Color.deepPurple : Color.clear, lineWidth: 2)
+                                    )
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                        } else {
                             NavigationLink(destination: BillingDetailView(org: $orgList.orgs[index], period: orgList.billingPeriod)) {
                                 EmptyView()
                             }
@@ -301,49 +454,79 @@ struct BillingListView: View {
                             BillingOrgCard(org: org)
                                 .disabled(true)
                         }
-                        .listRowSeparator(.hidden)
-                        .listRowBackground(Color.clear)
-                        .listRowInsets(EdgeInsets(top: index == 0 ? 20 : 0, leading: 20, bottom: 10, trailing: 20))
                     }
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets(top: index == 0 ? 20 : 0, leading: 20, bottom: 10, trailing: 20))
                 }
-                .listStyle(.plain)
-                .padding(.horizontal, UIDevice.current.isIPad ? 150 : 0)
-
-                // 底部刷新按钮和返回按钮
-                HStack {
-                    Button(action: {
-                        alertManager.showAlert(title: Localized("alert_title"), message: Localized("alert_logout_confirm")) {
-                            currentTask?.cancel()
-                            SharedUsers.removeAll()
-                            UserStorage.clear()
-                            // 关键：退出后立刻返回登录页
-                            dismiss()
-                        }
-                    }) {
-                        Image(systemName: "arrow.left.to.line.square")
-                            .resizable()
-                            .frame(width: 25, height: 25)
-                            .foregroundColor(Color.gray.opacity(0.5))
-                            .padding(20)
-                    }
-                    Spacer()
-                    let title = orgList.isUpdateFail ? Localized("last_update_fail") : Localized("last_update_time")
-                    let text = isRefreshing ? Localized("refreshing") : title + orgList.updateTime.yyyyMMddhhmmssDateString2
-                    Text(text)
-                        .font(.system(size: 11))
-                        .foregroundColor(orgList.isUpdateFail && refreshCompleted ? .red : .main)
-                    Spacer()
-                    RefreshButton(isRefreshing: $isRefreshing, refreshCompleted: $refreshCompleted, requestData: requestData)
-                }
-                .background(
-                    LinearGradient(
-                        gradient: Gradient(colors: [.lightPurple.opacity(0.8), Color.white]),
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
             }
-            .background(Color.white)
+            .listStyle(.plain)
+            .padding(.horizontal, isSplitMode ? 0 : (UIDevice.current.isIPad ? 150 : 0))
+            .onChange(of: orgList.orgs.count) { _, newCount in
+                // 分栏模式下刷新数据时，保持选中有效，必要时默认选中第一个
+                guard isSplitMode else { return }
+                if newCount == 0 {
+                    selectedOrgIndex = nil
+                } else if let idx = selectedOrgIndex, idx >= newCount {
+                    selectedOrgIndex = 0
+                } else if selectedOrgIndex == nil {
+                    selectedOrgIndex = 0
+                }
+            }
+        }
+        .navigationBarHidden(true)
+        .onAppear {
+            // 分栏进入时若没有选中且有数据，则默认选中第一个
+            if selectedOrgIndex == nil, !orgList.orgs.isEmpty {
+                selectedOrgIndex = 0
+            }
+        }
+    }
+
+    private var footer: some View {
+        // 底部刷新按钮和返回按钮
+        HStack {
+            Button(action: {
+                alertManager.showAlert(title: Localized("alert_title"), message: Localized("alert_logout_confirm")) {
+                    currentTask?.cancel()
+                    SharedUsers.removeAll()
+                    UserStorage.clear()
+                    dismiss()
+                }
+            }) {
+                Image(systemName: "arrow.left.to.line.square")
+                    .resizable()
+                    .frame(width: 25, height: 25)
+                    .foregroundColor(Color.gray.opacity(0.5))
+                    .padding(20)
+            }
+            Spacer()
+            let title = orgList.isUpdateFail ? Localized("last_update_fail") : Localized("last_update_time")
+            let text = isRefreshing ? Localized("refreshing") : title + orgList.updateTime.yyyyMMddhhmmssDateString2
+            Text(text)
+                .font(.system(size: 11))
+                .foregroundColor(orgList.isUpdateFail && refreshCompleted ? .red : .main)
+            Spacer()
+            RefreshButton(isRefreshing: $isRefreshing, refreshCompleted: $refreshCompleted, requestData: requestData)
+        }
+        .background(
+            LinearGradient(
+                gradient: Gradient(colors: [.lightPurple.opacity(0.8), Color.white]),
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        )
+    }
+
+    @ViewBuilder
+    private var modifiersLayer: some View {
+        // Important: this layer is always overlaid on top of the page.
+        // It must be transparent AND not intercept touches unless we actually need it.
+        let shouldInterceptTouches = isMenuOpen || isStartDatePickerPresented || isEndDatePickerPresented || alertManager.isPresented
+
+        Color.clear
+            .contentShape(Rectangle())
+            .allowsHitTesting(shouldInterceptTouches)
             .overlay(
                 Group {
                     if isMenuOpen {
@@ -356,7 +539,7 @@ struct BillingListView: View {
                                     isMenuOpen = false
                                 }
                             }
-                        
+
                         VStack(alignment: .leading, spacing: 0) {
                             // 菜单列表
                             VStack(alignment: .leading, spacing: 0) {
@@ -367,20 +550,20 @@ struct BillingListView: View {
                                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
                                             isMenuOpen = false
                                         }
-                                        
+
                                         if filter == .custom {
                                             savedUpdateTime = orgList.updateTime
                                         }
-                                        
+
                                         performFilter(filter, filter != .custom ? true : false)
                                     }) {
                                         HStack {
                                             Text(filter.localized)
                                                 .font(.system(size: 12))
                                                 .foregroundColor(.primary)
-                                            
+
                                             Spacer()
-                                            
+
                                             if filter == selectedFilter {
                                                 Image(systemName: "checkmark")
                                                     .font(.system(size: 10))
@@ -397,7 +580,7 @@ struct BillingListView: View {
                                         )
                                     }
                                     .buttonStyle(PlainButtonStyle())
-                                    
+
                                     if index < DateFilter.allCases.count - 1 {
                                         Divider()
                                             .padding(.leading, 10)
@@ -412,7 +595,7 @@ struct BillingListView: View {
                             .frame(height: isExpanded ? Double(40 * DateFilter.allCases.count) : 0, alignment: .top)
                             .clipped()
                             .animation(.easeInOut(duration: 0.15), value: isExpanded)
-                        
+
                             Spacer()
                         }
                         .padding(.leading, AutoSize(80, 65))
@@ -489,39 +672,6 @@ struct BillingListView: View {
                     }
                 )
             }
-        }
-        .navigationBarHidden(true)
-        .onAppear {
-            if #unavailable(iOS 26) {
-                setNavigationBarAppearance()
-            }
-            if orgList.orgs.isEmpty && !isRefreshing {
-                if let period = SharedUsers.first?.period {
-                    selectedFilter = period
-                    if period == .custom {
-                        isCustomDatePickerPresented = true
-                        if let start = SharedUsers.first?.customPeriodStartDate {
-                            startDate = start
-                            savedStartDate = startDate
-                        } else {
-                            startDate = kInitialStartDate
-                            savedStartDate = startDate
-                        }
-                        if let end = SharedUsers.first?.customPeriodEndDate {
-                            endDate = end
-                            savedEndDate = endDate
-                        } else {
-                            endDate = Date()
-                            savedEndDate = nil
-                        }
-                    }
-                } else {
-                    selectedFilter = .none
-                }
-                
-                performFilter(selectedFilter)
-            }
-        }
     }
     
     func requestData() {

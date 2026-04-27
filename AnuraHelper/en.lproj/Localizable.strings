@@ -141,3 +141,4 @@
 "analysis_month_label_format" = "%@";
 "analysis_loading" = "Loading data…";
 "analysis_loading_tip" = "The initial load may take a while. Please wait.";
+"select_org_to_view_detail" = "Loading data...";
