@@ -6,8 +6,19 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXContainerItemProxy section */
+		4C93D3692FA04878002FBD0C /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 4C15B1EA2F386FC7006C9F99 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 4C15B1F12F386FC7006C9F99;
+			remoteInfo = AnuraHelper;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
 		4C15B1F22F386FC7006C9F99 /* AnuraHelper.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AnuraHelper.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		4C93D3652FA04878002FBD0C /* AnuraHelperTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AnuraHelperTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -29,10 +40,22 @@
 			path = AnuraHelper;
 			sourceTree = "<group>";
 		};
+		4C93D3662FA04878002FBD0C /* AnuraHelperTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = AnuraHelperTests;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		4C15B1EF2F386FC7006C9F99 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4C93D3622FA04878002FBD0C /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -46,6 +69,7 @@
 			isa = PBXGroup;
 			children = (
 				4C15B1F42F386FC7006C9F99 /* AnuraHelper */,
+				4C93D3662FA04878002FBD0C /* AnuraHelperTests */,
 				4C15B1F32F386FC7006C9F99 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -54,6 +78,7 @@
 			isa = PBXGroup;
 			children = (
 				4C15B1F22F386FC7006C9F99 /* AnuraHelper.app */,
+				4C93D3652FA04878002FBD0C /* AnuraHelperTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -83,6 +108,29 @@
 			productReference = 4C15B1F22F386FC7006C9F99 /* AnuraHelper.app */;
 			productType = "com.apple.product-type.application";
 		};
+		4C93D3642FA04878002FBD0C /* AnuraHelperTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4C93D36B2FA04878002FBD0C /* Build configuration list for PBXNativeTarget "AnuraHelperTests" */;
+			buildPhases = (
+				4C93D3612FA04878002FBD0C /* Sources */,
+				4C93D3622FA04878002FBD0C /* Frameworks */,
+				4C93D3632FA04878002FBD0C /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				4C93D36A2FA04878002FBD0C /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				4C93D3662FA04878002FBD0C /* AnuraHelperTests */,
+			);
+			name = AnuraHelperTests;
+			packageProductDependencies = (
+			);
+			productName = AnuraHelperTests;
+			productReference = 4C93D3652FA04878002FBD0C /* AnuraHelperTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -95,6 +143,10 @@
 				TargetAttributes = {
 					4C15B1F12F386FC7006C9F99 = {
 						CreatedOnToolsVersion = 26.2;
+					};
+					4C93D3642FA04878002FBD0C = {
+						CreatedOnToolsVersion = 26.2;
+						TestTargetID = 4C15B1F12F386FC7006C9F99;
 					};
 				};
 			};
@@ -114,12 +166,20 @@
 			projectRoot = "";
 			targets = (
 				4C15B1F12F386FC7006C9F99 /* AnuraHelper */,
+				4C93D3642FA04878002FBD0C /* AnuraHelperTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		4C15B1F02F386FC7006C9F99 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4C93D3632FA04878002FBD0C /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -136,7 +196,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		4C93D3612FA04878002FBD0C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		4C93D36A2FA04878002FBD0C /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 4C15B1F12F386FC7006C9F99 /* AnuraHelper */;
+			targetProxy = 4C93D3692FA04878002FBD0C /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		4C15B1FB2F386FC8006C9F99 /* Debug */ = {
@@ -334,6 +409,48 @@
 			};
 			name = Release;
 		};
+		4C93D36C2FA04878002FBD0C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 7NXBNMZ82B;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.nuralogix.AnuraHelperTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/AnuraHelper.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/AnuraHelper";
+			};
+			name = Debug;
+		};
+		4C93D36D2FA04878002FBD0C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 7NXBNMZ82B;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.nuralogix.AnuraHelperTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/AnuraHelper.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/AnuraHelper";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -351,6 +468,15 @@
 			buildConfigurations = (
 				4C15B1FE2F386FC8006C9F99 /* Debug */,
 				4C15B1FF2F386FC8006C9F99 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		4C93D36B2FA04878002FBD0C /* Build configuration list for PBXNativeTarget "AnuraHelperTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4C93D36C2FA04878002FBD0C /* Debug */,
+				4C93D36D2FA04878002FBD0C /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
