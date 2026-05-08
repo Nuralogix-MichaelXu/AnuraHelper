@@ -164,10 +164,10 @@ struct BillingDetailView: View {
                                         Text(Localized("study_name")).frame(width: 90, alignment: .leading)
                                         Text(Localized("status")).frame(width: 50, alignment: .leading)
                                         Text(Localized("unit_price_label")).frame(width: 70, alignment: .leading)
-                                        Text(Localized("success_count_label")).frame(width: AutoSize(70, 80), alignment: .leading)
-                                        Text(Localized("billing_cost_label")).frame(width: AutoSize(65, 60), alignment: .leading)
                                         Text(Localized("period_success")).frame(width: AutoSize(70, 85), alignment: .leading)
                                         Text(Localized("period_cost")).frame(width: AutoSize(65, 75), alignment: .leading)
+                                        Text(Localized("success_count_label")).frame(width: AutoSize(70, 80), alignment: .leading)
+                                        Text(Localized("billing_cost_label")).frame(width: AutoSize(65, 60), alignment: .leading)
                                         Text(Localized("study_id")).frame(width: 60, alignment: .leading)
                                     }
                                     .font(.system(size: 8, weight: .medium))
@@ -415,13 +415,12 @@ private struct StudyRowView: View {
                         .padding(.leading, 0)
                 }
             }.frame(width: 70, alignment: .leading)
-
-            Text("\(billingSuccessMeasurements)").frame(width: AutoSize(70, 80), alignment: .leading)
-            Text(formatAmount(cost)).frame(width: AutoSize(65, 60), alignment: .leading)
-                .foregroundColor(isCostHighlight ? .orange : .text)
             Text(periodSuccessMeasurementsString).frame(width: AutoSize(70, 85), alignment: .leading)
             Text(periodCostString).frame(width: AutoSize(65, 75), alignment: .leading)
                 .foregroundColor(isPeriodCostHighlight ? .orange : .text)
+            Text("\(billingSuccessMeasurements)").frame(width: AutoSize(70, 80), alignment: .leading)
+            Text(formatAmount(cost)).frame(width: AutoSize(65, 60), alignment: .leading)
+                .foregroundColor(isCostHighlight ? .orange : .text)
             Text(study.encryptedKey).frame(width: 60, alignment: .leading)
         }
         .font(.system(size: 8))
@@ -448,12 +447,12 @@ private struct StudySummaryRowView: View {
             let totalPeriodSuccessCostString = totalPeriodSuccessCost == nil ? "-" : formatAmount(totalPeriodSuccessCost!)
             
             Text(Localized("summary_total") + "(\(count))").frame(width: 280, alignment: .leading)
-            Text("\(totalBillingSuccessCount)").frame(width: AutoSize(70, 80), alignment: .leading)
-            Text(formatAmount(billingCost)).frame(width: AutoSize(65, 60), alignment: .leading)
-                .foregroundColor(isCostHighlight ? .orange : .text)
             Text(totalPeriodSuccessCountString).frame(width: AutoSize(70, 85), alignment: .leading)
             Text(totalPeriodSuccessCostString).frame(width: AutoSize(65, 75), alignment: .leading)
                 .foregroundColor(isPeriodCostHighlight ? .orange : .text)
+            Text("\(totalBillingSuccessCount)").frame(width: AutoSize(70, 80), alignment: .leading)
+            Text(formatAmount(billingCost)).frame(width: AutoSize(65, 60), alignment: .leading)
+                .foregroundColor(isCostHighlight ? .orange : .text)
             Spacer()
         }
         .font(.system(size: 8, weight: .medium))

@@ -9,7 +9,7 @@ import SwiftUI
 
 struct StatisticsView: View {
     @ObservedObject var orgList: OrgListModel
-    @State private var selectedTab: StatisticsTab = .bill
+    @State private var selectedTab: StatisticsTab = .custom
     @Environment(\.dismiss) private var dismiss
 
     private var companyAggregates: [CompanyAggregate] {
@@ -103,6 +103,9 @@ struct StatisticsView: View {
         .navigationTitle(Localized("statistics_billing_title"))
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarHidden(false)
+        .onAppear {
+            selectedTab = orgList.isPeriodNone ? .bill : .custom
+        }
     }
 
     private var topSegment: some View {
@@ -110,8 +113,8 @@ struct StatisticsView: View {
             Spacer()
 
             HStack(spacing: 0) {
-                segmentButton(title: Localized("statistics_tab_billing"), tab: .bill)
                 segmentButton(title: Localized("statistics_tab_custom_period"), tab: .custom)
+                segmentButton(title: Localized("statistics_tab_billing"), tab: .bill)
             }
             .frame(width: 227, height: 32)
             .background(.subBackgound)
