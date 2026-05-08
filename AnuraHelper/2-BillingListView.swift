@@ -618,7 +618,7 @@ struct BillingListView: View {
                         .padding()
                         Spacer()
                         Button(Localized("confirm")) {
-                            startDate = startDate
+                            startDate = Calendar.current.date(bySettingHour: 0, minute: 0, second: 0, of: startDate) ?? Date()
                             isStartDatePickerPresented = false
                             // 日历变更后自动刷新
                             requestData()
