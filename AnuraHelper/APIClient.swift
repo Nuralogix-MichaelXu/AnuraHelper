@@ -56,7 +56,7 @@ extension APIClient {
             for user in SharedUsers {
                 group.addTask {
                     do {
-                        let studies = try await APIClient.getStudies(orgName: user.orgName, region: user.region, limit: 20)
+                        let studies = try await APIClient.getStudies(orgName: user.orgName, region: user.region, limit: 25)
                         return .success((user.orgName + "\(user.region.rawValue)", studies))
                     } catch {
                         return .failure(error)
@@ -247,6 +247,7 @@ class APIClient {
         request = URLRequest(url: requestURL)
         request.httpMethod = apiRequest.method.rawValue
         request.httpShouldHandleCookies = false // 禁用 cookies
+        request.timeoutInterval = 120
 
         apiRequest.headers?.forEach { key, value in
             request.setValue(value, forHTTPHeaderField: key)
@@ -257,7 +258,7 @@ class APIClient {
             request.httpBody = try? JSONSerialization.data(withJSONObject: params, options: [])
         }
         
-//         print("0000 - API->: \(requestURL)")
+        // print(Date(), "0000 - API->: \(requestURL)")
 
         let task = URLSession.shared.dataTask(with: request) { data, response, error in
             if let error = error {
@@ -277,7 +278,7 @@ class APIClient {
                 completion(.failure(apiError))
                 return
             }
-//            print("1111 - API->: \(requestURL)")
+            // print(Date(),"1111 - API->: \(requestURL)", String(data: data, encoding: .utf8))
             completion(.success(data))
         }
         task.resume()
