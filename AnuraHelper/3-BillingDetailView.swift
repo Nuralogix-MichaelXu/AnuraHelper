@@ -218,7 +218,7 @@ struct BillingDetailView: View {
             Button(Localized("add_deposits")) {
                 if let newValue = Double(tempDepositsValue) {
                     org.totalDeposits += newValue
-                    if let idx = SharedUsers.firstIndex(where: { $0.orgName == org.name }) {
+                    if let idx = SharedUsers.firstIndex(where: { $0.key == org.key }) {
                         var user = SharedUsers[idx]
                         user.deposits = newValue
                         SharedUsers[idx] = user
@@ -229,7 +229,7 @@ struct BillingDetailView: View {
             Button(Localized("edit_deposits")) {
                 if let newValue = Double(tempDepositsValue) {
                     org.totalDeposits = newValue
-                    if let idx = SharedUsers.firstIndex(where: { $0.orgName == org.name }) {
+                    if let idx = SharedUsers.firstIndex(where: { $0.key == org.key }) {
                         var user = SharedUsers[idx]
                         user.deposits = newValue
                         SharedUsers[idx] = user
@@ -248,7 +248,7 @@ struct BillingDetailView: View {
                     org.unitPrice = newValue
                     org.resetStudyUnitPrice()
                     org.studies = org.studies // 触发刷新
-                    if let idx = SharedUsers.firstIndex(where: { $0.orgName == org.name }) {
+                    if let idx = SharedUsers.firstIndex(where: { $0.key == org.key }) {
                         var user = SharedUsers[idx]
                         user.unitPrice = newValue
                         user.studyUnitPrices = nil
@@ -271,7 +271,7 @@ struct BillingDetailView: View {
                     if let idx1 = org.studies.firstIndex(where: { $0.ID == editingStudy.ID }) {
                         org.studies[idx1].unitPrice = newValue
                         org.studies = org.studies // 触发刷新
-                        if let idx = SharedUsers.firstIndex(where: { $0.orgName == org.name }) {
+                        if let idx = SharedUsers.firstIndex(where: { $0.key == org.key }) {
                             var user = SharedUsers[idx]
                             var studyUnitPrice = user.studyUnitPrices ?? [:]
                             studyUnitPrice[editingStudy.ID] = newValue
@@ -312,7 +312,7 @@ struct BillingDetailView: View {
                 if org.billingDate != tempBillingDate {
                     org.billingDate = tempBillingDate
                     billingDateString = org.billingDate.yyyyMMddDateString
-                    if let idx = SharedUsers.firstIndex(where: { $0.orgName == org.name }) {
+                    if let idx = SharedUsers.firstIndex(where: { $0.key == org.key }) {
                         var user = SharedUsers[idx]
                         user.billingDate = org.billingDate
                         SharedUsers[idx] = user
