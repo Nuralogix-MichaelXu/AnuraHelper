@@ -177,6 +177,7 @@ struct BillingListView: View {
                 Color.white
                 if let index = selectedOrgIndex, orgList.orgs.indices.contains(index) {
                     BillingDetailView(org: $orgList.orgs[index], period: orgList.billingPeriod)
+                        .id(orgList.orgs[index].key)
                         .navigationBarHidden(false)
                 } else {
                     VStack(spacing: 12) {
